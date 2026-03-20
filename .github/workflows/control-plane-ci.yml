@@ -38,7 +38,7 @@ jobs:
 
       - name: Pytest smoke
         run: |
-          pytest -q tests/test_smoke.py
+          pytest -q tests/test_smoke.py tests/test_ui_smoke.py
 
   docker-build:
     runs-on: ubuntu-latest
