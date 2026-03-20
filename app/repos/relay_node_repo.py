@@ -24,6 +24,10 @@ class RelayNodeRepo:
                 "-i",
                 self.ssh_key_path,
                 "-o",
+                "BatchMode=yes",
+                "-o",
+                "ConnectTimeout=3",
+                "-o",
                 "StrictHostKeyChecking=accept-new",
                 f"{self.ssh_user}@{self.host}",
                 f"sudo systemctl is-active {self.service_name}",
@@ -32,4 +36,6 @@ class RelayNodeRepo:
             capture_output=True,
             text=True,
         )
-        return result.stdout.strip() or result.stderr.strip() or "unknown"
+        if result.returncode == 0 and result.stdout.strip():
+            return result.stdout.strip()
+        return "unknown"

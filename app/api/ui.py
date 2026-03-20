@@ -58,3 +58,54 @@ def create_client(
 def delete_client(client_id: str, service: XrayFrontendService = Depends(get_xray_frontend_service)) -> RedirectResponse:
     service.delete_client(client_id)
     return RedirectResponse(url="/clients", status_code=303)
+
+
+@router.get("/config", response_class=HTMLResponse)
+def config_page(request: Request, service: XrayFrontendService = Depends(get_xray_frontend_service)) -> HTMLResponse:
+    frontend = service.get_frontend_config()
+    relay = service.get_relay_config()
+    return templates.TemplateResponse(request, "config.html", {"frontend": frontend, "relay": relay})
+
+
+@router.post("/config/frontend")
+def update_frontend_config(
+    frontend_port: int = Form(...),
+    frontend_sni: str = Form(...),
+    frontend_fp: str = Form(...),
+    frontend_target: str = Form(...),
+    frontend_spider: str = Form(...),
+    frontend_shortids: str = Form(...),
+    relay_host: str = Form(...),
+    relay_port: int = Form(...),
+    service: XrayFrontendService = Depends(get_xray_frontend_service),
+) -> RedirectResponse:
+    service.update_frontend_config(
+        UpdateFrontendConfigCommand(
+            port=frontend_port,
+            server_name=frontend_sni,
+            fingerprint=frontend_fp,
+            target=frontend_target,
+            spider_x=frontend_spider,
+            short_ids=[item.strip() for item in frontend_shortids.split(',') if item.strip()],
+            relay_host=relay_host,
+            relay_port=relay_port,
+        )
+    )
+    return RedirectResponse(url="/config", status_code=303)
+
+
+@router.post("/config/relay")
+def update_relay_config(
+    relay_public_host: str = Form(...),
+    relay_listen_port: int = Form(...),
+    relay_uuid: str = Form(...),
+    service: XrayFrontendService = Depends(get_xray_frontend_service),
+) -> RedirectResponse:
+    service.update_relay_config(
+        UpdateRelayConfigCommand(
+            public_host=relay_public_host,
+            listen_port=relay_listen_port,
+            relay_uuid=relay_uuid,
+        )
+    )
+    return RedirectResponse(url="/config", status_code=303)

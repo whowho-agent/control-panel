@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>Config Editor</h1>
+<div class="grid">
+  <div class="card" style="grid-column:span 7;">
+    <h2 style="margin-top:0">Frontend config</h2>
+    <form method="post" action="/config/frontend">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
+        <div><label>Frontend port</label><input name="frontend_port" value="{{ frontend.port }}" /></div>
+        <div><label>SNI</label><input name="frontend_sni" value="{{ frontend.server_name }}" /></div>
+        <div><label>Fingerprint</label><input name="frontend_fp" value="{{ frontend.fingerprint }}" /></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px;">
+        <div><label>Target</label><input name="frontend_target" value="{{ frontend.target }}" /></div>
+        <div><label>SpiderX</label><input name="frontend_spider" value="{{ frontend.spider_x }}" /></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px;">
+        <div><label>Relay host</label><input name="relay_host" value="{{ frontend.relay_host }}" /></div>
+        <div><label>Relay port</label><input name="relay_port" value="{{ frontend.relay_port }}" /></div>
+      </div>
+      <div style="margin-top:12px;">
+        <label>Short IDs (comma separated)</label>
+        <input name="frontend_shortids" value="{{ frontend.short_ids | join(',') }}" />
+      </div>
+      <div style="margin-top:16px;"><button type="submit">Save frontend config</button></div>
+    </form>
+  </div>
+  <div class="card" style="grid-column:span 5;">
+    <h2 style="margin-top:0">Relay config</h2>
+    <form method="post" action="/config/relay">
+      <div><label>Relay host</label><input name="relay_public_host" value="{{ relay.host }}" /></div>
+      <div style="margin-top:12px;"><label>Relay port</label><input name="relay_listen_port" value="{{ relay.port }}" /></div>
+      <div style="margin-top:12px;"><label>Relay UUID</label><input name="relay_uuid" value="{{ relay.uuid }}" /></div>
+      <div style="margin-top:16px;"><button type="submit">Save relay config</button></div>
+    </form>
+  </div>
+</div>
+{% endblock %}
