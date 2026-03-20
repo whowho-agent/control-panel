@@ -11,7 +11,7 @@
     <div class="topology">
       <div class="node"><div class="small">Client Edge</div><div class="kpi">Internet Clients</div><div><span class="badge ok">traffic present</span></div></div>
       <div class="arrow">→</div>
-      <div class="node"><div class="small">Gateway Node</div><div class="kpi">wg-gateway</div><div>Frontend: <span class="badge {{ 'ok' if topology.frontend_service == 'active' else 'bad' }}">{{ topology.frontend_service }}</span></div><div class="small">Entry 193.233.103.220:{{ frontend.port }}</div></div>
+      <div class="node"><div class="small">Gateway Node</div><div class="kpi">wg-gateway</div><div>Frontend: <span class="badge {{ 'ok' if topology.frontend_service in ['active', 'configured'] else 'bad' }}">{{ topology.frontend_service }}</span></div><div class="small">Entry 193.233.103.220:{{ frontend.port }}</div></div>
       <div class="arrow">→</div>
       <div class="node"><div class="small">Egress Node</div><div class="kpi">egress-gateway</div><div>Relay: <span class="badge {{ 'ok' if topology.relay_reachable else 'bad' }}">{{ 'reachable' if topology.relay_reachable else 'unreachable' }}</span></div><div class="small">Expected egress {{ topology.expected_egress_ip }}</div></div>
     </div>
@@ -39,6 +39,9 @@
       {% endfor %}
       </tbody>
     </table>
+  </div>
+</div>
+{% endblock %}
   </div>
 </div>
 {% endblock %}

@@ -55,9 +55,14 @@ class XrayFrontendRepo:
     def get_frontend_service_status(self) -> str:
         try:
             result = subprocess.run(["systemctl", "is-active", self.service_name], check=False, capture_output=True, text=True)
+            status = result.stdout.strip() or result.stderr.strip() or "unknown"
+            if status:
+                return status
         except FileNotFoundError:
-            return "unknown"
-        return result.stdout.strip() or result.stderr.strip() or "unknown"
+            pass
+        if self.config_path.exists() and Path(self.xray_binary_path).exists():
+            return "configured"
+        return "unknown"
 
     def derive_public_key(self, private_key: str) -> str:
         if not private_key:
