@@ -18,13 +18,11 @@
         "security": "reality",
         "realitySettings": {
           "show": false,
+          "dest": "${XRAY_FRONTEND_TARGET}",
           "xver": 0,
-          "target": "${XRAY_FRONTEND_TARGET}",
-          "serverName": "${XRAY_FRONTEND_SERVER_NAME}",
+          "serverNames": ["${XRAY_FRONTEND_SERVER_NAME}"],
           "privateKey": "${XRAY_FRONTEND_REALITY_PRIVATE_KEY}",
-          "shortIds": [${XRAY_FRONTEND_SHORT_IDS_JSON}],
-          "fingerprint": "${XRAY_FRONTEND_FINGERPRINT}",
-          "spiderX": "${XRAY_FRONTEND_SPIDER_X}"
+          "shortIds": [${XRAY_FRONTEND_SHORT_IDS_JSON}]
         },
         "tcpSettings": {
           "header": {
