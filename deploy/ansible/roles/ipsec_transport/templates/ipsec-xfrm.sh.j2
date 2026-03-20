@@ -6,11 +6,17 @@ LOCAL_PUBLIC_IP="{{ ipsec_local_public_ip }}"
 REMOTE_PUBLIC_IP="{{ ipsec_remote_public_ip }}"
 LOCAL_TUNNEL_IP="{{ ipsec_local_tunnel_ip }}"
 REMOTE_TUNNEL_IP="{{ ipsec_remote_tunnel_ip }}"
+PRIVATE_RELAY_HOST="{{ xray_relay_private_host }}"
 MARK="{{ ipsec_mark }}"
+ROUTE_TABLE="{{ ipsec_route_table }}"
+UNDERLAY_DEV="$(ip route get "$REMOTE_PUBLIC_IP" | awk '/dev/ {print $5; exit}')"
 
 ip link del "$IFACE" 2>/dev/null || true
-ip link add "$IFACE" type xfrm dev "$(ip route get "$REMOTE_PUBLIC_IP" | awk '/dev/ {print $5; exit}')" if_id "$MARK"
+ip link add "$IFACE" type xfrm dev "$UNDERLAY_DEV" if_id "$MARK"
 ip addr flush dev "$IFACE" || true
 ip addr add "$LOCAL_TUNNEL_IP/30" dev "$IFACE"
 ip link set "$IFACE" up
-ip route replace "$REMOTE_TUNNEL_IP/32" dev "$IFACE"
+ip route replace "$REMOTE_TUNNEL_IP/32" dev "$IFACE" table "$ROUTE_TABLE"
+ip route replace "$PRIVATE_RELAY_HOST/32" dev "$IFACE" table "$ROUTE_TABLE"
+ip rule del to "$PRIVATE_RELAY_HOST/32" table "$ROUTE_TABLE" priority 220 2>/dev/null || true
+ip rule add to "$PRIVATE_RELAY_HOST/32" table "$ROUTE_TABLE" priority 220

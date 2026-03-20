@@ -14,8 +14,16 @@
   shell: ip addr show dev {{ ipsec_interface_name }} | grep -F '{{ ipsec_local_tunnel_ip }}'
   changed_when: false
 
-- name: Validate route to remote tunnel IP exists via XFRM interface
-  shell: ip route get {{ ipsec_remote_tunnel_ip }} | grep -F 'dev {{ ipsec_interface_name }}'
+- name: Validate route to remote tunnel IP exists in IPSec route table
+  shell: ip route show table {{ ipsec_route_table }} | grep -F '{{ ipsec_remote_tunnel_ip }}/32 dev {{ ipsec_interface_name }}'
+  changed_when: false
+
+- name: Validate route to private relay host exists in IPSec route table
+  shell: ip route show table {{ ipsec_route_table }} | grep -F '{{ xray_relay_private_host }}/32 dev {{ ipsec_interface_name }}'
+  changed_when: false
+
+- name: Validate policy rule for private relay host exists
+  shell: ip rule show | grep -F 'to {{ xray_relay_private_host }}/32 lookup {{ ipsec_route_table }}'
   changed_when: false
 
 - name: Validate firewall ruleset tooling is present

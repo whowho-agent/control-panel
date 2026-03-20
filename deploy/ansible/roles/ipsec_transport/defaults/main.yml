@@ -4,6 +4,7 @@ ipsec_esp_proposal: aes256-sha256
 ipsec_auto: start
 ipsec_mark: 42
 ipsec_route_table: 220
+ipsec_route_table_name: xray_ipsec
 ipsec_interface_name: xfrm0
 ipsec_firewall_manage: false
 ipsec_precheck_require_oob_console: true

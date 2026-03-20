@@ -6,6 +6,13 @@
     state: present
     update_cache: true
 
+- name: Ensure dedicated route table is present
+  lineinfile:
+    path: /etc/iproute2/rt_tables
+    line: "{{ ipsec_route_table }} {{ ipsec_route_table_name }}"
+    regexp: "^{{ ipsec_route_table }}\\s+{{ ipsec_route_table_name }}$"
+    state: present
+
 - name: Install XFRM setup helper script
   template:
     src: ipsec-xfrm.sh.j2

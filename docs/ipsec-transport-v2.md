@@ -111,6 +111,7 @@ IPSec v2 is accepted only if all pass:
 - recovery/rollback playbooks: present
 - `ipsec_transport` role: refactored into staged v2 scaffold (`precheck`, `prepare`, `apply`, `validate`)
 - XFRM helper script + systemd unit scaffold: present
+- dedicated route table + destination-based rule scaffold for private relay host: present
 - route-based interface/routing implementation: partially scaffolded, not yet acceptance-tested
 - firewall enforcement: pending
 - safe service-path cutover to private relay host: pending
