@@ -1,6 +1,7 @@
 # Bootstrap scripts
 
 Implemented scripts:
+- `init-env.sh`
 - `bootstrap-gateway.sh`
 - `bootstrap-egress.sh`
 - `bootstrap-control-plane.sh`

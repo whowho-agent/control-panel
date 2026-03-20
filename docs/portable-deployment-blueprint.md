@@ -204,6 +204,7 @@ This is the stable bridge design for v1.
 4. runtime directory contract
 5. backup/rollback contract before config apply
 6. production auth/secret handling
+7. env init helper for generated secrets
 
 ## Success criteria for portable v1
 
