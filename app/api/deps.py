@@ -1,3 +1,7 @@
+import secrets
+from fastapi import Depends, HTTPException, status
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
+
 from app.repos.client_meta_repo import ClientMetaRepo
 from app.repos.relay_node_repo import RelayNodeRepo
 from app.repos.xray_frontend_repo import XrayFrontendRepo
@@ -17,6 +21,30 @@ class Settings:
     relay_ssh_user = "root"
     online_window_minutes = 5
     expected_egress_ip = "72.56.109.197"
+    admin_user = "admin"
+    admin_password = "cfuQXkmySEy7Q0MYN8ruwCs-"
+
+
+security = HTTPBasic()
+
+
+def get_settings() -> Settings:
+    return Settings()
+
+
+def require_basic_auth(
+    credentials: HTTPBasicCredentials = Depends(security),
+    settings: Settings = Depends(get_settings),
+) -> str:
+    valid_user = secrets.compare_digest(credentials.username, settings.admin_user)
+    valid_password = secrets.compare_digest(credentials.password, settings.admin_password)
+    if not (valid_user and valid_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="unauthorized",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+    return credentials.username
 
 
 def get_xray_frontend_service() -> XrayFrontendService:

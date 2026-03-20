@@ -22,6 +22,7 @@
         <td><code>{{ row.client.id }}</code></td>
         <td><code>{{ row.client.short_id }}</code></td>
         <td><a href="{{ row.uri }}">URI</a></td>
+        <td><a href="/clients/{{ row.client.id }}/qr" target="_blank">QR</a></td>
         <td>
           <form method="post" action="/clients/{{ row.client.id }}/delete" onsubmit="return confirm('Delete client?')">
             <button class="danger" type="submit">Delete</button>

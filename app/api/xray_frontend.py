@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from app.api.deps import get_xray_frontend_service
+from app.api.deps import get_xray_frontend_service, require_basic_auth
 from app.api.schemas import (
     ClientOutput,
     CreateClientInput,
@@ -15,7 +15,7 @@ from app.domain.xray_frontend import CreateFrontendClientCommand
 from app.domain.xray_frontend_config import UpdateFrontendConfigCommand, UpdateRelayConfigCommand
 from app.services.xray_frontend_service import XrayFrontendService
 
-router = APIRouter(prefix="/api/xray-frontend", tags=["xray-frontend"])
+router = APIRouter(prefix="/api/xray-frontend", tags=["xray-frontend"], dependencies=[Depends(require_basic_auth)])
 
 
 @router.get("/clients", response_model=list[ClientOutput], summary="List frontend clients")
