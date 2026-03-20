@@ -1,0 +1,17 @@
+- name: Validate strongSwan service is active
+  command: systemctl is-active strongswan-starter
+  register: ipsec_service_status
+  changed_when: false
+  failed_when: ipsec_service_status.stdout.strip() != 'active'
+
+- name: Validate firewall ruleset tooling is present
+  shell: command -v nft || command -v iptables
+  register: firewall_tool_check
+  changed_when: false
+  failed_when: firewall_tool_check.rc != 0
+
+- name: Warn that tunnel/IP/route validation is expected to fail until v2 plumbing lands
+  debug:
+    msg: >-
+      Route-based tunnel validation is intentionally deferred until interface creation,
+      route installation, and firewall rules are implemented in ipsec_transport v2.

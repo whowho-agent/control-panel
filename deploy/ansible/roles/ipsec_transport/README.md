@@ -1,12 +1,17 @@
 # ipsec_transport role
 
-Baseline Ansible role for a protected gateway↔egress inter-node segment.
+Route-based IPSec v2 scaffold for a protected gateway↔egress segment.
 
 ## Purpose
 - enable `xray_transport_mode=ipsec`
-- install strongSwan
+- install strongSwan baseline packages
 - render `/etc/ipsec.conf` and `/etc/ipsec.secrets`
-- start `strongswan-starter`
+- keep the implementation staged as `precheck -> prepare -> apply -> validate`
+
+## Current status
+- this role is now structured for IPSec v2 work
+- it is **not yet a fully working route-based tunnel implementation**
+- XFRM/VTI interface creation, policy routing, and firewall enforcement still need to be implemented
 
 ## Required variables
 - `xray_ipsec_psk`
@@ -14,12 +19,10 @@ Baseline Ansible role for a protected gateway↔egress inter-node segment.
 - `xray_ipsec_egress_tunnel_ip`
 - `xray_relay_private_host`
 
-## Notes
-- This role is a starting point, not a fully hardened production IPSec implementation.
-- It currently models a PSK-based IKEv2 tunnel contract and now validates:
-  - `strongswan-starter` service state
-  - local tunnel IP presence
-  - route to remote tunnel IP
-  - firewall tooling presence (`nft` or `iptables`)
-  - relay private endpoint reachability from gateway
-- It should still be extended with explicit policy/firewall management before production rollout.
+## Safety contract
+Use together with:
+- `playbooks/prepare-ipsec-rollback.yml`
+- `playbooks/cancel-ipsec-rollback.yml`
+- `playbooks/recover-network.yml`
+
+Do not treat this role as production-ready until route-based plumbing and recovery-tested validation are complete.

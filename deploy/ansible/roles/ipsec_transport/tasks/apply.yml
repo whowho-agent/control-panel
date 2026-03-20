@@ -1,0 +1,29 @@
+- name: Render ipsec.conf for route-based v2 baseline
+  template:
+    src: ipsec.conf.j2
+    dest: /etc/ipsec.conf
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart ipsec
+
+- name: Render ipsec.secrets
+  template:
+    src: ipsec.secrets.j2
+    dest: /etc/ipsec.secrets
+    owner: root
+    group: root
+    mode: '0600'
+  notify: restart ipsec
+
+- name: Enable and start strongSwan
+  systemd:
+    name: strongswan-starter
+    enabled: true
+    state: started
+
+- name: Warn that XFRM/VTI plumbing is still pending implementation
+  debug:
+    msg: >-
+      ipsec_transport v2 role scaffold is active, but route-based tunnel interface creation,
+      policy routing, and firewall enforcement are not yet implemented in this apply stage.

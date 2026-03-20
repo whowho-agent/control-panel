@@ -2,107 +2,14 @@
   meta: end_host
   when: not ipsec_enabled
 
-- name: Derive IPSec endpoint variables for gateway
-  set_fact:
-    ipsec_local_public_ip: "{{ hostvars[inventory_hostname].ansible_host }}"
-    ipsec_remote_public_ip: "{{ hostvars[groups['egress'][0]].ansible_host }}"
-    ipsec_local_id: "{{ xray_ipsec_gateway_id | default(hostvars[groups['gateway'][0]].ansible_host) }}"
-    ipsec_remote_id: "{{ xray_ipsec_egress_id | default(hostvars[groups['egress'][0]].ansible_host) }}"
-    ipsec_local_tunnel_ip: "{{ xray_ipsec_gateway_tunnel_ip }}"
-    ipsec_remote_tunnel_ip: "{{ xray_ipsec_egress_tunnel_ip }}"
-  when: "'gateway' in group_names"
+- name: Include IPSec v2 precheck stage
+  include_tasks: precheck.yml
 
-- name: Derive IPSec endpoint variables for egress
-  set_fact:
-    ipsec_local_public_ip: "{{ hostvars[inventory_hostname].ansible_host }}"
-    ipsec_remote_public_ip: "{{ hostvars[groups['gateway'][0]].ansible_host }}"
-    ipsec_local_id: "{{ xray_ipsec_egress_id | default(hostvars[groups['egress'][0]].ansible_host) }}"
-    ipsec_remote_id: "{{ xray_ipsec_gateway_id | default(hostvars[groups['gateway'][0]].ansible_host) }}"
-    ipsec_local_tunnel_ip: "{{ xray_ipsec_egress_tunnel_ip }}"
-    ipsec_remote_tunnel_ip: "{{ xray_ipsec_gateway_tunnel_ip }}"
-  when: "'egress' in group_names"
+- name: Include IPSec v2 prepare stage
+  include_tasks: prepare.yml
 
-- name: Assert required IPSec variables are provided
-  assert:
-    that:
-      - xray_ipsec_psk is defined
-      - xray_ipsec_psk | length > 0
-      - xray_ipsec_gateway_tunnel_ip is defined
-      - xray_ipsec_egress_tunnel_ip is defined
-      - xray_relay_private_host is defined
-      - xray_relay_private_host | length > 0
-    fail_msg: "IPSec mode requires PSK, tunnel IPs, and xray_relay_private_host"
+- name: Include IPSec v2 apply stage
+  include_tasks: apply.yml
 
-- name: Install strongSwan
-  apt:
-    name:
-      - strongswan
-    state: present
-    update_cache: true
-
-- name: Render ipsec.conf
-  template:
-    src: ipsec.conf.j2
-    dest: /etc/ipsec.conf
-    owner: root
-    group: root
-    mode: '0644'
-  notify: restart ipsec
-
-- name: Render ipsec.secrets
-  template:
-    src: ipsec.secrets.j2
-    dest: /etc/ipsec.secrets
-    owner: root
-    group: root
-    mode: '0600'
-  notify: restart ipsec
-
-- name: Enable and start strongSwan
-  systemd:
-    name: strongswan-starter
-    enabled: true
-    state: started
-
-- name: Wait for IPSec tunnel address to be present
-  shell: ip addr show | grep -F '{{ ipsec_local_tunnel_ip }}'
-  register: ipsec_addr_check
-  retries: 5
-  delay: 2
-  until: ipsec_addr_check.rc == 0
-  changed_when: false
-  failed_when: false
-
-- name: Validate strongSwan service is active
-  command: systemctl is-active strongswan-starter
-  register: ipsec_service_status
-  changed_when: false
-  failed_when: ipsec_service_status.stdout.strip() != 'active'
-
-- name: Validate local tunnel IP is configured
-  shell: ip addr show | grep -F '{{ ipsec_local_tunnel_ip }}'
-  changed_when: false
-
-- name: Validate route to remote tunnel IP exists
-  shell: ip route get {{ ipsec_remote_tunnel_ip }}
-  changed_when: false
-
-- name: Validate firewall ruleset tooling is present
-  shell: command -v nft || command -v iptables
-  register: firewall_tool_check
-  changed_when: false
-  failed_when: firewall_tool_check.rc != 0
-
-- name: Validate relay private host matches egress tunnel IP in ipsec mode
-  assert:
-    that:
-      - xray_relay_private_host == xray_ipsec_egress_tunnel_ip
-    fail_msg: "xray_relay_private_host should point at the egress tunnel IP when xray_transport_mode=ipsec"
-  when: "'gateway' in group_names"
-
-- name: Validate relay port is reachable over private tunnel from gateway
-  wait_for:
-    host: "{{ xray_relay_private_host }}"
-    port: "{{ xray_relay_port }}"
-    timeout: 3
-  when: "'gateway' in group_names"
+- name: Include IPSec v2 validate stage
+  include_tasks: validate.yml

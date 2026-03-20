@@ -1,0 +1,19 @@
+- name: Install strongSwan and iproute2
+  apt:
+    name:
+      - strongswan
+      - iproute2
+    state: present
+    update_cache: true
+
+- name: Ensure route-based interface helper directory exists
+  file:
+    path: /etc/systemd/system/ipsec-xfrm.service.d
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Note that rollback should be prepared before live IPSec testing
+  debug:
+    msg: "Before applying IPSec v2 on real test runs, arm prepare-ipsec-rollback.yml and confirm snapshots/OOB access."

@@ -10,9 +10,15 @@ conn xray-interconnect
   auto={{ ipsec_auto }}
   left={{ ipsec_local_public_ip }}
   leftid={{ ipsec_local_id }}
-  leftsourceip={{ ipsec_local_tunnel_ip }}
-  leftsubnet={{ ipsec_left_subnet }}
   right={{ ipsec_remote_public_ip }}
   rightid={{ ipsec_remote_id }}
-  rightsourceip={{ ipsec_remote_tunnel_ip }}
-  rightsubnet={{ ipsec_right_subnet }}
+  leftsubnet=0.0.0.0/0
+  rightsubnet=0.0.0.0/0
+  mark={{ ipsec_mark }}
+  installpolicy=yes
+  dpdaction=restart
+  dpddelay=30s
+  rekey=no
+
+# Note: route-based XFRM/VTI interface creation and policy-routing setup are part of
+# ipsec_transport v2 implementation and are not fully expressed by ipsec.conf alone.

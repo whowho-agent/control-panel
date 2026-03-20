@@ -1,0 +1,37 @@
+- name: Derive IPSec endpoint variables for gateway
+  set_fact:
+    ipsec_local_public_ip: "{{ hostvars[inventory_hostname].ansible_host }}"
+    ipsec_remote_public_ip: "{{ hostvars[groups['egress'][0]].ansible_host }}"
+    ipsec_local_id: "{{ xray_ipsec_gateway_id | default(hostvars[groups['gateway'][0]].ansible_host) }}"
+    ipsec_remote_id: "{{ xray_ipsec_egress_id | default(hostvars[groups['egress'][0]].ansible_host) }}"
+    ipsec_local_tunnel_ip: "{{ xray_ipsec_gateway_tunnel_ip }}"
+    ipsec_remote_tunnel_ip: "{{ xray_ipsec_egress_tunnel_ip }}"
+  when: "'gateway' in group_names"
+
+- name: Derive IPSec endpoint variables for egress
+  set_fact:
+    ipsec_local_public_ip: "{{ hostvars[inventory_hostname].ansible_host }}"
+    ipsec_remote_public_ip: "{{ hostvars[groups['gateway'][0]].ansible_host }}"
+    ipsec_local_id: "{{ xray_ipsec_egress_id | default(hostvars[groups['egress'][0]].ansible_host) }}"
+    ipsec_remote_id: "{{ xray_ipsec_gateway_id | default(hostvars[groups['gateway'][0]].ansible_host) }}"
+    ipsec_local_tunnel_ip: "{{ xray_ipsec_egress_tunnel_ip }}"
+    ipsec_remote_tunnel_ip: "{{ xray_ipsec_gateway_tunnel_ip }}"
+  when: "'egress' in group_names"
+
+- name: Assert required IPSec variables are provided
+  assert:
+    that:
+      - xray_ipsec_psk is defined
+      - xray_ipsec_psk | length > 0
+      - xray_ipsec_gateway_tunnel_ip is defined
+      - xray_ipsec_egress_tunnel_ip is defined
+      - xray_relay_private_host is defined
+      - xray_relay_private_host | length > 0
+    fail_msg: "IPSec mode requires PSK, tunnel IPs, and xray_relay_private_host"
+
+- name: Assert relay private host matches egress tunnel IP in ipsec mode
+  assert:
+    that:
+      - xray_relay_private_host == xray_ipsec_egress_tunnel_ip
+    fail_msg: "xray_relay_private_host should point at the egress tunnel IP when xray_transport_mode=ipsec"
+  when: "'gateway' in group_names"

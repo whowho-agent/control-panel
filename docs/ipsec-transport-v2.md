@@ -103,5 +103,13 @@ IPSec v2 is accepted only if all pass:
 1. add recovery playbooks/scripts
 2. add rollback timer management
 3. redesign `ipsec_transport` role for route-based transport
-4. validate transport before service cutover
-5. add firewall hardening as a later step
+4. implement XFRM/VTI interface creation and route installation
+5. validate transport before service cutover
+6. add firewall hardening as a later step
+
+## Current code status
+- recovery/rollback playbooks: present
+- `ipsec_transport` role: refactored into staged v2 scaffold (`precheck`, `prepare`, `apply`, `validate`)
+- route-based interface/routing implementation: pending
+- firewall enforcement: pending
+- safe service-path cutover to private relay host: pending

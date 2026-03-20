@@ -1,8 +1,10 @@
 ipsec_enabled: "{{ xray_transport_mode == 'ipsec' }}"
-ipsec_left_id: "{{ inventory_hostname }}"
-ipsec_right_id: "{{ 'egress-1' if 'gateway' in group_names else 'gateway-1' }}"
-ipsec_left_subnet: 0.0.0.0/0
-ipsec_right_subnet: 0.0.0.0/0
 ipsec_ike_proposal: aes256-sha256-modp2048
 ipsec_esp_proposal: aes256-sha256
 ipsec_auto: start
+ipsec_mark: 42
+ipsec_route_table: 220
+ipsec_interface_name: xfrm0
+ipsec_firewall_manage: false
+ipsec_precheck_require_oob_console: true
+ipsec_precheck_require_snapshot: true
