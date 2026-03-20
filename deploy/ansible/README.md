@@ -23,3 +23,7 @@ ansible-playbook -i deploy/ansible/inventory.ini deploy/ansible/site.yml
 - Current playbooks are thin wrappers around existing bootstrap scripts.
 - This keeps one source of truth for provisioning logic while giving repeatable orchestration.
 - Next step would be replacing shell wrappers with native Ansible tasks/templates.
+- `xray_transport_mode` controls which relay address frontend/control-plane use:
+  - `direct` → `xray_relay_host`
+  - `ipsec` → `xray_relay_private_host`
+- This flag currently switches addressing/health expectations; tunnel provisioning itself should be handled by a dedicated IPSec/WireGuard role.

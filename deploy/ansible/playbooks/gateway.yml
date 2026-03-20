@@ -36,7 +36,7 @@
           XRAY_FRONTEND_FINGERPRINT={{ xray_frontend_fingerprint }}
           XRAY_FRONTEND_SHORT_IDS={{ xray_frontend_short_ids }}
           XRAY_FRONTEND_REALITY_PRIVATE_KEY={{ xray_frontend_reality_private_key }}
-          XRAY_RELAY_HOST={{ xray_relay_host }}
+          XRAY_RELAY_HOST={{ xray_relay_private_host if xray_transport_mode == 'ipsec' else xray_relay_host }}
           XRAY_RELAY_PORT={{ xray_relay_port }}
           XRAY_RELAY_UUID={{ xray_relay_uuid }}
 

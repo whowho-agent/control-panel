@@ -201,8 +201,9 @@ Portable v1 rules:
 - Xray frontend: host-managed systemd service
 - Xray relay: host-managed systemd service
 - control-plane: Docker container
+- inter-node transport: parameterized as `direct` or `ipsec`
 
-This is the stable bridge design for v1.
+This is the stable bridge design for v1. `ipsec` should be treated as the production-default posture when a protected inter-node segment is required.
 
 ## What should be standardized next
 

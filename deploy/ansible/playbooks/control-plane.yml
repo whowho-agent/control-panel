@@ -45,7 +45,7 @@
           XRAY_FRONTEND_HOST_RUNTIME_DIR=/opt/xray-frontend
           XRAY_BINARY_PATH=/data/frontend/xray
           XRAY_CLIENT_META_PATH=/data/frontend/clients-meta.json
-          XRAY_RELAY_HOST={{ xray_relay_host }}
+          XRAY_RELAY_HOST={{ xray_relay_private_host if xray_transport_mode == 'ipsec' else xray_relay_host }}
           XRAY_RELAY_PORT={{ xray_relay_port }}
           XRAY_RELAY_SERVICE_NAME=xray-relay
           XRAY_RELAY_SSH_KEY_PATH=/run/secrets/relay_ssh_key

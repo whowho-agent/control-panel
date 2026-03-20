@@ -1,3 +1,4 @@
+xray_transport_mode: direct  # direct|ipsec
 xray_frontend_port: 9444
 xray_frontend_server_name: example.com
 xray_frontend_target: example.com:443
@@ -5,6 +6,7 @@ xray_frontend_fingerprint: chrome
 xray_frontend_short_ids: "6ba85179e30d4fc2,0123456789abcdef"
 xray_frontend_reality_private_key: replace-me
 xray_relay_host: egress.example.com
+xray_relay_private_host: 10.10.10.2
 xray_relay_port: 9443
 xray_relay_uuid: replace-me
 xray_expected_egress_ip: 203.0.113.10
