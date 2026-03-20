@@ -7,7 +7,7 @@
 
 ## Build
 ```bash
-docker compose build
+make build
 ```
 
 ## Run
@@ -23,7 +23,19 @@ mkdir -p runtime/frontend runtime/ssh
 # place SSH private key for relay access into runtime/ssh/relay_ssh_key
 chmod 600 runtime/ssh/relay_ssh_key
 
-docker compose up -d
+make up
+```
+
+## Helper commands
+```bash
+make logs
+make ps
+make down
+
+# or use scripts directly
+./scripts/control-plane-up.sh
+./scripts/control-plane-logs.sh
+./scripts/control-plane-down.sh
 ```
 
 ## Exposed app
