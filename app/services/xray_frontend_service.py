@@ -56,6 +56,7 @@ class XrayFrontendService:
                     last_seen=last_seen,
                     source_ip=source_ip,
                     status=status,
+                    enabled=item.get("enable", True),
                 )
             )
         return clients
