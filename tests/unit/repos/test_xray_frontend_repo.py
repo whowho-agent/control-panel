@@ -119,3 +119,48 @@ def test_get_relay_config_from_frontend_returns_outbound_values(tmp_path: Path) 
     assert result.host == "203.0.113.10"
     assert result.port == 9777
     assert result.uuid == "relay-new"
+
+
+def test_systemctl_command_uses_nsenter_when_enabled(tmp_path: Path) -> None:
+    repo = XrayFrontendRepo(
+        config_path=str(tmp_path / "config.json"),
+        access_log_path=str(tmp_path / "access.log"),
+        service_name="xray-frontend",
+        xray_binary_path=str(tmp_path / "xray"),
+        use_nsenter=True,
+    )
+
+    command = repo._systemctl_command("restart")
+
+    assert command == [
+        "nsenter",
+        "-t",
+        "1",
+        "-m",
+        "-u",
+        "-i",
+        "-n",
+        "-p",
+        "systemctl",
+        "restart",
+        "xray-frontend",
+    ]
+
+
+def test_read_config_tolerates_literal_backslash_n_suffix(tmp_path: Path) -> None:
+    config_path = tmp_path / "config.json"
+    access_log_path = tmp_path / "access.log"
+    xray_path = tmp_path / "xray"
+    xray_path.write_text("#!/usr/bin/env bash\necho 'Public key: derived-pub'\n")
+    xray_path.chmod(0o755)
+    config_path.write_text('{"inbounds": [], "outbounds": []}\\n')
+
+    repo = XrayFrontendRepo(
+        config_path=str(config_path),
+        access_log_path=str(access_log_path),
+        service_name="xray-frontend",
+        xray_binary_path=str(xray_path),
+        use_nsenter=False,
+    )
+
+    assert repo.read_config() == {"inbounds": [], "outbounds": []}

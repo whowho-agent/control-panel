@@ -21,7 +21,7 @@ class XrayFrontendRepo:
         self.use_nsenter = use_nsenter
 
     def read_config(self) -> dict:
-        return json.loads(self.config_path.read_text())
+        return self._load_json_file(self.config_path)
 
     def write_config(self, config: dict) -> None:
         self.config_path.write_text(json.dumps(config, indent=2) + "\n")
@@ -116,3 +116,9 @@ class XrayFrontendRepo:
                 self.service_name,
             ]
         return ["systemctl", action, self.service_name]
+
+    def _load_json_file(self, path: Path) -> dict:
+        raw = path.read_text()
+        if raw.endswith("\\n"):
+            raw = raw[:-2] + "\n"
+        return json.loads(raw)
