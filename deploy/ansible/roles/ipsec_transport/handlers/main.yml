@@ -1,0 +1,4 @@
+- name: restart ipsec
+  systemd:
+    name: strongswan-starter
+    state: restarted

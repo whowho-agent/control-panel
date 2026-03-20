@@ -90,6 +90,9 @@ deploy/
     validate-gateway.sh
     validate-egress.sh
     validate-end-to-end.sh
+  ansible/
+    playbooks/ipsec.yml
+    roles/ipsec_transport/
 ```
 
 ## Environment contract
@@ -105,6 +108,13 @@ Should define:
 - `XRAY_RELAY_HOST`
 - `XRAY_RELAY_PORT`
 - `XRAY_RELAY_UUID`
+
+For Ansible-driven deployments also parameterize:
+- `xray_transport_mode` (`direct` or `ipsec`)
+- `xray_relay_private_host` (used when `xray_transport_mode=ipsec`)
+- `xray_ipsec_psk`
+- `xray_ipsec_gateway_tunnel_ip`
+- `xray_ipsec_egress_tunnel_ip`
 
 ### egress.env
 Should define:
@@ -202,6 +212,7 @@ Portable v1 rules:
 - Xray relay: host-managed systemd service
 - control-plane: Docker container
 - inter-node transport: parameterized as `direct` or `ipsec`
+- IPSec tunnel provisioning: Ansible role `ipsec_transport`
 
 This is the stable bridge design for v1. `ipsec` should be treated as the production-default posture when a protected inter-node segment is required.
 
@@ -223,3 +234,4 @@ Portable v1 is done when:
 - control-plane can be started from env/template/script
 - health checks can confirm the installation
 - a client can connect and see the configured egress IP
+P

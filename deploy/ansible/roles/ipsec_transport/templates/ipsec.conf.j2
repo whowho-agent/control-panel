@@ -1,0 +1,18 @@
+config setup
+  uniqueids=no
+
+conn xray-interconnect
+  type=tunnel
+  authby=psk
+  keyexchange=ikev2
+  ike={{ ipsec_ike_proposal }}
+  esp={{ ipsec_esp_proposal }}
+  auto={{ ipsec_auto }}
+  left={{ ipsec_local_public_ip }}
+  leftid={{ ipsec_local_id }}
+  leftsourceip={{ ipsec_local_tunnel_ip }}
+  leftsubnet={{ ipsec_left_subnet }}
+  right={{ ipsec_remote_public_ip }}
+  rightid={{ ipsec_remote_id }}
+  rightsourceip={{ ipsec_remote_tunnel_ip }}
+  rightsubnet={{ ipsec_right_subnet }}

@@ -1,0 +1,8 @@
+ipsec_enabled: "{{ xray_transport_mode == 'ipsec' }}"
+ipsec_left_id: "{{ inventory_hostname }}"
+ipsec_right_id: "{{ 'egress-1' if 'gateway' in group_names else 'gateway-1' }}"
+ipsec_left_subnet: 0.0.0.0/0
+ipsec_right_subnet: 0.0.0.0/0
+ipsec_ike_proposal: aes256-sha256-modp2048
+ipsec_esp_proposal: aes256-sha256
+ipsec_auto: start

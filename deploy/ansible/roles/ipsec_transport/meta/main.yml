@@ -1,0 +1,12 @@
+galaxy_info:
+  role_name: ipsec_transport
+  author: openclaw
+  description: Baseline strongSwan role for protected gateway-egress transport
+  license: MIT
+  min_ansible_version: '2.15'
+  platforms:
+    - name: Debian
+      versions: ['bookworm', 'bullseye']
+    - name: Ubuntu
+      versions: ['jammy', 'noble']
+dependencies: []

@@ -1,0 +1,6 @@
+- name: Configure IPSec transport
+  hosts: gateway:egress
+  become: true
+  roles:
+    - role: ipsec_transport
+      when: xray_transport_mode == 'ipsec'

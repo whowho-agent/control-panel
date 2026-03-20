@@ -26,4 +26,5 @@ ansible-playbook -i deploy/ansible/inventory.ini deploy/ansible/site.yml
 - `xray_transport_mode` controls which relay address frontend/control-plane use:
   - `direct` → `xray_relay_host`
   - `ipsec` → `xray_relay_private_host`
-- This flag currently switches addressing/health expectations; tunnel provisioning itself should be handled by a dedicated IPSec/WireGuard role.
+- `playbooks/ipsec.yml` applies role `ipsec_transport` when `xray_transport_mode=ipsec`.
+- The current role provisions a baseline strongSwan PSK tunnel contract and config files. Treat it as the starting point for a hardened production IPSec role, not the final word.
