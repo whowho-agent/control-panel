@@ -44,5 +44,5 @@
       failed_when: egress_status.stdout.strip() != 'active'
 
     - name: Validate egress port is listening
-      shell: ss -lntp | grep -E ':{{ xray_relay_port }}\\b'
+      shell: ss -lnt | grep -F ':{{ xray_relay_port }} '
       changed_when: false

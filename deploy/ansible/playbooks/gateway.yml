@@ -50,5 +50,5 @@
       failed_when: gateway_status.stdout.strip() != 'active'
 
     - name: Validate gateway port is listening
-      shell: ss -lntp | grep -E ':{{ xray_frontend_port }}\\b'
+      shell: ss -lnt | grep -F ':{{ xray_frontend_port }} '
       changed_when: false
