@@ -19,7 +19,10 @@ Lightweight web admin for the standalone Xray frontend.
 - `XRAY_ADMIN_PORT` (default `9080`)
 - `XRAY_FRONTEND_CONFIG` (default `/opt/xray-frontend/config.json`)
 - `XRAY_FRONTEND_SERVICE` (default `xray-frontend`)
-- `XRAY_RELAY_HOST` (default `72.56.109.197`)
+- `XRAY_WG_HOST` (default `gateway.example.com`)
+- `XRAY_GATEWAY_LABEL` (default `gateway`)
+- `XRAY_RELAY_HOST` (default `relay.example.com`)
+- `XRAY_RELAY_LABEL` (default `egress`)
 - `XRAY_RELAY_PORT` (default `9443`)
 
 ## Notes

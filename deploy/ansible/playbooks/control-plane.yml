@@ -57,3 +57,13 @@
 
     - name: Run control-plane bootstrap
       command: bash {{ project_root }}/deploy/bootstrap/bootstrap-control-plane.sh {{ project_root }}/deploy/env/control-plane.env
+
+    - name: Validate control-plane health endpoint
+      uri:
+        url: http://127.0.0.1:8000/health
+        return_content: true
+      register: control_plane_health
+      retries: 10
+      delay: 2
+      until: control_plane_health.status == 200
+      changed_when: false

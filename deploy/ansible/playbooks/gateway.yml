@@ -42,3 +42,13 @@
 
     - name: Run gateway bootstrap
       command: bash {{ project_root }}/deploy/bootstrap/bootstrap-gateway.sh {{ project_root }}/deploy/env/gateway.env
+
+    - name: Validate gateway service is active
+      command: systemctl is-active xray-frontend
+      register: gateway_status
+      changed_when: false
+      failed_when: gateway_status.stdout.strip() != 'active'
+
+    - name: Validate gateway port is listening
+      shell: ss -lntp | grep -E ':{{ xray_frontend_port }}\\b'
+      changed_when: false

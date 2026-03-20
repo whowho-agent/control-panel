@@ -36,3 +36,13 @@
 
     - name: Run egress bootstrap
       command: bash {{ project_root }}/deploy/bootstrap/bootstrap-egress.sh {{ project_root }}/deploy/env/egress.env
+
+    - name: Validate egress service is active
+      command: systemctl is-active xray-relay
+      register: egress_status
+      changed_when: false
+      failed_when: egress_status.stdout.strip() != 'active'
+
+    - name: Validate egress port is listening
+      shell: ss -lntp | grep -E ':{{ xray_relay_port }}\\b'
+      changed_when: false
