@@ -30,4 +30,4 @@ services:
       - ${XRAY_FRONTEND_HOST_RUNTIME_DIR:-/opt/xray-frontend}/access.log:/data/frontend/access.log:rw
       - ${XRAY_FRONTEND_HOST_RUNTIME_DIR:-/opt/xray-frontend}/clients-meta.json:/data/frontend/clients-meta.json:rw
       - ${XRAY_FRONTEND_HOST_RUNTIME_DIR:-/opt/xray-frontend}/xray:/data/frontend/xray:ro
-      - ${XRAY_RELAY_SSH_KEY_SOURCE:?set-in-.env}:/run/secrets/relay_ssh_key:ro
+      - ${XRAY_RELAY_SSH_KEY_SOURCE:?set-in-.env}:/run/secrets/relay_ssh_key.pem:ro
