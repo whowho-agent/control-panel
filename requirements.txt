@@ -1,3 +1,5 @@
+# Runtime dependencies are managed in pyproject.toml / uv.lock.
+# Keep this file for compatibility with existing Docker/CI steps until they are migrated.
 fastapi==0.116.1
 uvicorn[standard]==0.35.0
 jinja2==3.1.6
