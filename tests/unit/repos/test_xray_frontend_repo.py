@@ -51,6 +51,7 @@ def test_get_frontend_config_returns_runtime_values(tmp_path: Path) -> None:
         access_log_path=str(access_log_path),
         service_name="xray-frontend",
         xray_binary_path=str(xray_path),
+        use_nsenter=False,
     )
 
     result = repo.get_frontend_config()
@@ -110,6 +111,7 @@ def test_get_relay_config_from_frontend_returns_outbound_values(tmp_path: Path) 
         access_log_path=str(access_log_path),
         service_name="xray-frontend",
         xray_binary_path=str(xray_path),
+        use_nsenter=False,
     )
 
     result = repo.get_relay_config_from_frontend()

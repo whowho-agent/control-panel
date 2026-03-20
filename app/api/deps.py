@@ -25,6 +25,7 @@ class Settings:
             "XRAY_FRONTEND_SERVICE_NAME",
             "xray-frontend",
         )
+        self.frontend_use_nsenter = os.getenv("XRAY_FRONTEND_USE_NSENTER", "0") == "1"
         self.xray_binary_path = os.getenv("XRAY_BINARY_PATH", "/opt/xray-frontend/xray")
         self.meta_path = os.getenv(
             "XRAY_CLIENT_META_PATH",
@@ -74,6 +75,7 @@ def get_xray_frontend_service(settings: Settings = Depends(get_settings)) -> Xra
         access_log_path=settings.frontend_access_log_path,
         service_name=settings.frontend_service_name,
         xray_binary_path=settings.xray_binary_path,
+        use_nsenter=settings.frontend_use_nsenter,
     )
     meta_repo = ClientMetaRepo(meta_path=settings.meta_path)
     relay_repo = RelayNodeRepo(

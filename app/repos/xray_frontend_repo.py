@@ -6,11 +6,19 @@ from app.domain.xray_frontend import FrontendConfigResult, RelayConfigResult
 
 
 class XrayFrontendRepo:
-    def __init__(self, config_path: str, access_log_path: str, service_name: str, xray_binary_path: str) -> None:
+    def __init__(
+        self,
+        config_path: str,
+        access_log_path: str,
+        service_name: str,
+        xray_binary_path: str,
+        use_nsenter: bool = False,
+    ) -> None:
         self.config_path = Path(config_path)
         self.access_log_path = Path(access_log_path)
         self.service_name = service_name
         self.xray_binary_path = xray_binary_path
+        self.use_nsenter = use_nsenter
 
     def read_config(self) -> dict:
         return json.loads(self.config_path.read_text())
@@ -51,7 +59,7 @@ class XrayFrontendRepo:
     def restart_frontend(self) -> None:
         try:
             subprocess.run(
-                ["systemctl", "restart", self.service_name],
+                self._systemctl_command("restart"),
                 check=True,
                 capture_output=True,
                 text=True,
@@ -62,7 +70,7 @@ class XrayFrontendRepo:
     def get_frontend_service_status(self) -> str:
         try:
             result = subprocess.run(
-                ["systemctl", "is-active", self.service_name],
+                self._systemctl_command("is-active"),
                 check=False,
                 capture_output=True,
                 text=True,
@@ -91,3 +99,20 @@ class XrayFrontendRepo:
             if line.startswith("Public key:"):
                 return line.split(":", 1)[1].strip()
         return ""
+
+    def _systemctl_command(self, action: str) -> list[str]:
+        if self.use_nsenter:
+            return [
+                "nsenter",
+                "-t",
+                "1",
+                "-m",
+                "-u",
+                "-i",
+                "-n",
+                "-p",
+                "systemctl",
+                action,
+                self.service_name,
+            ]
+        return ["systemctl", action, self.service_name]
