@@ -53,6 +53,25 @@ def test_create_client_returns_201_and_uri() -> None:
     app.dependency_overrides.clear()
 
 
+def test_create_client_returns_409_on_duplicate_name() -> None:
+    class DuplicateClientsService(FakeClientsService):
+        def create_client(self, command):
+            raise ValueError(f"client_name_exists:{command.name}")
+
+    app.dependency_overrides[get_xray_frontend_service] = lambda: DuplicateClientsService()
+    client = create_test_client()
+
+    response = client.post(
+        "/api/xray-frontend/clients",
+        auth=("admin", "change-me"),
+        json={"name": "alpha", "host": "panel.example.com"},
+    )
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == "client_name_exists:alpha"
+    app.dependency_overrides.clear()
+
+
 def test_delete_client_returns_204() -> None:
     app.dependency_overrides[get_xray_frontend_service] = lambda: FakeClientsService()
     client = create_test_client()

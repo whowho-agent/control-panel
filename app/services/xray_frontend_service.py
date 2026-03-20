@@ -105,6 +105,14 @@ class XrayFrontendService:
         frontend = self.frontend_repo.get_frontend_config()
         inbound = next(item for item in config["inbounds"] if item.get("tag") == "frontend-in")
         reality = inbound["streamSettings"]["realitySettings"]
+        existing_emails = {
+            item.get("email", "")
+            for item in inbound["settings"].get("clients", [])
+            if item.get("email")
+        }
+        if command.name in existing_emails:
+            raise ValueError(f"client_name_exists:{command.name}")
+
         client_id = str(uuid.uuid4())
         short_id = self._generate_short_id(frontend.short_ids)
         reality.setdefault("shortIds", [])

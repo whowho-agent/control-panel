@@ -41,9 +41,12 @@ def create_client(
     payload: CreateClientInput,
     service: XrayFrontendService = Depends(get_xray_frontend_service),
 ) -> CreateClientOutput:
-    result = service.create_client(
-        CreateFrontendClientCommand(name=payload.name, host=payload.host)
-    )
+    try:
+        result = service.create_client(
+            CreateFrontendClientCommand(name=payload.name, host=payload.host)
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     return CreateClientOutput(client=ClientOutput(**asdict(result.client)), uri=result.uri)
 
 

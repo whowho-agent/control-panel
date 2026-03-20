@@ -190,6 +190,18 @@ def test_create_client_generates_unique_short_id(tmp_path: Path) -> None:
     assert meta_repo.meta["clients"][second.client.id]["short_id"] == second.client.short_id
 
 
+def test_create_client_rejects_duplicate_email_name(tmp_path: Path) -> None:
+    service, frontend_repo, meta_repo, _ = build_service(tmp_path)
+    frontend_repo.config["inbounds"][0]["settings"]["clients"][0]["email"] = "t2"
+    meta_repo.meta["clients"]["client-1"]["name"] = "t2"
+
+    try:
+        service.create_client(CreateFrontendClientCommand(name="t2", host="panel.example.com"))
+        assert False, "expected duplicate client name to be rejected"
+    except ValueError as exc:
+        assert str(exc) == "client_name_exists:t2"
+
+
 def test_delete_client_removes_client_from_config_and_meta(tmp_path: Path) -> None:
     service, frontend_repo, meta_repo, _ = build_service(tmp_path)
 
