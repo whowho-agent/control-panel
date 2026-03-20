@@ -2,6 +2,7 @@ import re
 import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
+from typing import Any
 
 from app.domain.xray_frontend import CreateFrontendClientCommand, FrontendClient, FrontendClientUriResult, TopologyHealthResult
 from app.domain.xray_frontend_config import UpdateFrontendConfigCommand, UpdateRelayConfigCommand
@@ -18,12 +19,15 @@ class XrayFrontendService:
         relay_repo: RelayNodeRepo,
         online_window_minutes: int,
         expected_egress_ip: str,
+        topology_cache_ttl_seconds: int,
     ) -> None:
         self.frontend_repo = frontend_repo
         self.meta_repo = meta_repo
         self.relay_repo = relay_repo
         self.online_window_minutes = online_window_minutes
         self.expected_egress_ip = expected_egress_ip
+        self.topology_cache_ttl_seconds = topology_cache_ttl_seconds
+        self._topology_cache: dict[str, Any] = {"value": None, "expires_at": None}
 
     def list_clients(self) -> list[FrontendClient]:
         config = self.frontend_repo.read_config()
