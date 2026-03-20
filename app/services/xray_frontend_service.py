@@ -3,8 +3,14 @@ import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any
+from urllib.parse import quote, urlencode
 
-from app.domain.xray_frontend import CreateFrontendClientCommand, FrontendClient, FrontendClientUriResult, TopologyHealthResult
+from app.domain.xray_frontend import (
+    CreateFrontendClientCommand,
+    FrontendClient,
+    FrontendClientUriResult,
+    TopologyHealthResult,
+)
 from app.domain.xray_frontend_config import UpdateFrontendConfigCommand, UpdateRelayConfigCommand
 from app.repos.client_meta_repo import ClientMetaRepo
 from app.repos.relay_node_repo import RelayNodeRepo
@@ -93,7 +99,11 @@ class XrayFrontendService:
         config = self.frontend_repo.read_config()
         inbound = next(item for item in config["inbounds"] if item.get("tag") == "frontend-in")
         before = len(inbound["settings"].get("clients", []))
-        inbound["settings"]["clients"] = [item for item in inbound["settings"].get("clients", []) if item.get("id") != client_id]
+        inbound["settings"]["clients"] = [
+            item
+            for item in inbound["settings"].get("clients", [])
+            if item.get("id") != client_id
+        ]
         if len(inbound["settings"]["clients"]) == before:
             return False
         self.frontend_repo.write_config(config)
@@ -106,7 +116,10 @@ class XrayFrontendService:
     def set_client_enabled(self, client_id: str, enabled: bool) -> bool:
         config = self.frontend_repo.read_config()
         inbound = next(item for item in config["inbounds"] if item.get("tag") == "frontend-in")
-        target = next((item for item in inbound["settings"].get("clients", []) if item.get("id") == client_id), None)
+        target = next(
+            (item for item in inbound["settings"].get("clients", []) if item.get("id") == client_id),
+            None,
+        )
         if target is None:
             return False
         target["enable"] = enabled
@@ -180,21 +193,27 @@ class XrayFrontendService:
             "spx": frontend_config.spider_x,
             "encryption": "none",
         }
-        from urllib.parse import urlencode, quote
-
-        return f"vless://{client.id}@{host}:{frontend_config.port}?{urlencode(query)}#{quote(client.name)}"
+        return (
+            f"vless://{client.id}@{host}:{frontend_config.port}?"
+            f"{urlencode(query)}#{quote(client.name)}"
+        )
 
     def _parse_activity(self) -> dict:
         result = {}
         if not self.frontend_repo.access_log_path.exists():
             return result
-        line_re = re.compile(r'^(?P<ts>\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}\.\d+) from (?P<ip>[^:]+):\d+ accepted .*? \[(?P<inbound>[^\]]+) ->')
+        line_re = re.compile(
+            r"^(?P<ts>\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}\.\d+) "
+            r"from (?P<ip>[^:]+):\d+ accepted .*? \[(?P<inbound>[^\]]+) ->"
+        )
         lines = self.frontend_repo.access_log_path.read_text(errors="ignore").splitlines()[-2000:]
         for line in lines:
             match = line_re.search(line)
             if not match or match.group("inbound") != "frontend-in":
                 continue
-            seen_at = datetime.strptime(match.group("ts"), "%Y/%m/%d %H:%M:%S.%f").replace(tzinfo=timezone.utc)
+            seen_at = datetime.strptime(match.group("ts"), "%Y/%m/%d %H:%M:%S.%f").replace(
+                tzinfo=timezone.utc
+            )
             ip = match.group("ip")
             previous = result.get(ip)
             if not previous or seen_at > previous["last_seen_dt"]:

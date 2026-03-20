@@ -1,6 +1,7 @@
 import os
 import secrets
 from functools import lru_cache
+
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 
@@ -12,15 +13,30 @@ from app.services.xray_frontend_service import XrayFrontendService
 
 class Settings:
     def __init__(self) -> None:
-        self.frontend_config_path = os.getenv("XRAY_FRONTEND_CONFIG_PATH", "/opt/xray-frontend/config.json")
-        self.frontend_access_log_path = os.getenv("XRAY_FRONTEND_ACCESS_LOG_PATH", "/opt/xray-frontend/access.log")
-        self.frontend_service_name = os.getenv("XRAY_FRONTEND_SERVICE_NAME", "xray-frontend")
+        self.frontend_config_path = os.getenv(
+            "XRAY_FRONTEND_CONFIG_PATH",
+            "/opt/xray-frontend/config.json",
+        )
+        self.frontend_access_log_path = os.getenv(
+            "XRAY_FRONTEND_ACCESS_LOG_PATH",
+            "/opt/xray-frontend/access.log",
+        )
+        self.frontend_service_name = os.getenv(
+            "XRAY_FRONTEND_SERVICE_NAME",
+            "xray-frontend",
+        )
         self.xray_binary_path = os.getenv("XRAY_BINARY_PATH", "/opt/xray-frontend/xray")
-        self.meta_path = os.getenv("XRAY_CLIENT_META_PATH", "/opt/xray-frontend/clients-meta.json")
+        self.meta_path = os.getenv(
+            "XRAY_CLIENT_META_PATH",
+            "/opt/xray-frontend/clients-meta.json",
+        )
         self.relay_host = os.getenv("XRAY_RELAY_HOST", "72.56.109.197")
         self.relay_port = int(os.getenv("XRAY_RELAY_PORT", "9443"))
         self.relay_service_name = os.getenv("XRAY_RELAY_SERVICE_NAME", "xray-relay")
-        self.relay_ssh_key_path = os.getenv("XRAY_RELAY_SSH_KEY_PATH", "/root/.openclaw/workspace/keys/rabotyaga_ed25519")
+        self.relay_ssh_key_path = os.getenv(
+            "XRAY_RELAY_SSH_KEY_PATH",
+            "/root/.openclaw/workspace/keys/rabotyaga_ed25519",
+        )
         self.relay_ssh_user = os.getenv("XRAY_RELAY_SSH_USER", "root")
         self.online_window_minutes = int(os.getenv("XRAY_ONLINE_WINDOW_MINUTES", "5"))
         self.expected_egress_ip = os.getenv("XRAY_EXPECTED_EGRESS_IP", "72.56.109.197")
