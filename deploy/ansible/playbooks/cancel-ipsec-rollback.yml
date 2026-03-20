@@ -1,0 +1,9 @@
+- name: Cancel timed rollback after successful IPSec validation
+  hosts: gateway:egress
+  become: true
+  tasks:
+    - name: Cancel rollback timer if present
+      shell: systemctl cancel ipsec-rollback || true
+      args:
+        executable: /bin/bash
+      failed_when: false

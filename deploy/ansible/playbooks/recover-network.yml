@@ -1,0 +1,50 @@
+- name: Recover network access on gateway and egress
+  hosts: gateway:egress
+  become: true
+  tasks:
+    - name: Stop and disable strongSwan
+      systemd:
+        name: strongswan-starter
+        state: stopped
+        enabled: false
+      failed_when: false
+
+    - name: Restore backed-up ipsec.conf if present
+      shell: |
+        if [ -f /etc/ipsec.conf.bak ]; then
+          cp /etc/ipsec.conf.bak /etc/ipsec.conf
+        fi
+      args:
+        executable: /bin/bash
+      failed_when: false
+
+    - name: Restore backed-up ipsec.secrets if present
+      shell: |
+        if [ -f /etc/ipsec.secrets.bak ]; then
+          cp /etc/ipsec.secrets.bak /etc/ipsec.secrets
+        fi
+      args:
+        executable: /bin/bash
+      failed_when: false
+
+    - name: Flush nftables ruleset when available
+      shell: command -v nft >/dev/null 2>&1 && nft flush ruleset || true
+      args:
+        executable: /bin/bash
+      failed_when: false
+
+    - name: Flush iptables and accept all default policies
+      shell: |
+        iptables -F || true
+        iptables -P INPUT ACCEPT || true
+        iptables -P FORWARD ACCEPT || true
+        iptables -P OUTPUT ACCEPT || true
+      args:
+        executable: /bin/bash
+      failed_when: false
+
+    - name: Restart SSH service
+      shell: systemctl restart ssh || systemctl restart sshd || true
+      args:
+        executable: /bin/bash
+      failed_when: false

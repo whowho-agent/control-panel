@@ -1,0 +1,55 @@
+- name: Prepare timed rollback for IPSec testing
+  hosts: gateway:egress
+  become: true
+  vars:
+    rollback_script_path: /usr/local/sbin/ipsec-rollback.sh
+    rollback_timeout_minutes: "{{ ipsec_rollback_timeout_minutes | default(5) }}"
+  tasks:
+    - name: Backup ipsec.conf if present
+      shell: |
+        if [ -f /etc/ipsec.conf ] && [ ! -f /etc/ipsec.conf.bak ]; then
+          cp /etc/ipsec.conf /etc/ipsec.conf.bak
+        fi
+      args:
+        executable: /bin/bash
+      failed_when: false
+
+    - name: Backup ipsec.secrets if present
+      shell: |
+        if [ -f /etc/ipsec.secrets ] && [ ! -f /etc/ipsec.secrets.bak ]; then
+          cp /etc/ipsec.secrets /etc/ipsec.secrets.bak
+        fi
+      args:
+        executable: /bin/bash
+      failed_when: false
+
+    - name: Install rollback script
+      copy:
+        dest: "{{ rollback_script_path }}"
+        owner: root
+        group: root
+        mode: '0755'
+        content: |
+          #!/usr/bin/env bash
+          set -euo pipefail
+          systemctl stop strongswan-starter || true
+          systemctl disable strongswan-starter || true
+          [ -f /etc/ipsec.conf.bak ] && cp /etc/ipsec.conf.bak /etc/ipsec.conf || true
+          [ -f /etc/ipsec.secrets.bak ] && cp /etc/ipsec.secrets.bak /etc/ipsec.secrets || true
+          nft flush ruleset 2>/dev/null || true
+          iptables -F 2>/dev/null || true
+          iptables -P INPUT ACCEPT 2>/dev/null || true
+          iptables -P FORWARD ACCEPT 2>/dev/null || true
+          iptables -P OUTPUT ACCEPT 2>/dev/null || true
+          systemctl restart ssh || systemctl restart sshd || true
+
+    - name: Cancel existing rollback timer if present
+      shell: systemctl cancel ipsec-rollback || true
+      args:
+        executable: /bin/bash
+      failed_when: false
+
+    - name: Arm rollback timer
+      shell: systemd-run --unit ipsec-rollback --on-active={{ rollback_timeout_minutes }}m {{ rollback_script_path }}
+      args:
+        executable: /bin/bash
