@@ -6,5 +6,6 @@ Implemented scripts:
 - `bootstrap-control-plane.sh`
 
 Notes:
-- gateway/egress scripts expect the Xray binary to already exist at `/opt/xray-frontend/xray` or `/opt/xray-relay/xray`
-- control-plane script stages the repo and `.env`, then expects runtime frontend files and relay SSH key to be placed before `docker compose up -d --build`
+- gateway/egress scripts automatically download and install the Xray binary if it is missing
+- control-plane script stages the repo, copies `.env`, auto-imports existing frontend runtime files when present, and can auto-copy relay SSH key if `XRAY_RELAY_SSH_KEY_SOURCE` is defined in env
+- control-plane script now runs `docker compose up -d --build` itself

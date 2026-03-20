@@ -4,12 +4,10 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 ENV_FILE="${1:-$ROOT_DIR/deploy/env/egress.env}"
 TEMPLATE="$ROOT_DIR/deploy/templates/xray-relay.config.json.template"
+# shellcheck source=./lib.sh
+source "$ROOT_DIR/deploy/bootstrap/lib.sh"
 
-if [[ ! -f "$ENV_FILE" ]]; then
-  echo "egress env file not found: $ENV_FILE"
-  exit 1
-fi
-
+require_env_file "$ENV_FILE"
 source "$ENV_FILE"
 
 : "${XRAY_RELAY_PORT:?}"

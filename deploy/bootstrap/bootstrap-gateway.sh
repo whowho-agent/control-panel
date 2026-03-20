@@ -32,11 +32,9 @@ PY
 )"
 
 sudo apt-get update >/dev/null
-sudo apt-get install -y qrencode curl >/dev/null
-sudo install -d -m 755 /opt/xray-frontend
-if [[ ! -f /opt/xray-frontend/xray ]]; then
-  echo "place xray binary at /opt/xray-frontend/xray before running bootstrap"
-  exit 1
+sudo apt-get install -y qrencode curl gettext-base >/dev/null
+if [[ ! -x /opt/xray-frontend/xray ]]; then
+  sudo bash -c "$(declare -f install_xray_binary); install_xray_binary /opt/xray-frontend"
 fi
 sudo chmod 755 /opt/xray-frontend/xray
 
@@ -64,3 +62,4 @@ EOF
 sudo systemctl daemon-reload
 sudo systemctl enable --now xray-frontend
 sudo systemctl status xray-frontend --no-pager -l | sed -n '1,20p'
+end --no-pager -l | sed -n '1,20p'
