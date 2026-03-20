@@ -64,9 +64,10 @@ class FakeMetaRepo:
 
 
 class FakeRelayRepo:
-    def __init__(self, reachable: bool = True, status: str = "active") -> None:
+    def __init__(self, reachable: bool = True, status: str = "active", observed_ip: str = "72.56.109.197") -> None:
         self.reachable = reachable
         self.status = status
+        self.observed_ip = observed_ip
         self.calls = 0
 
     def is_port_reachable(self, timeout: int = 2) -> bool:
@@ -76,6 +77,10 @@ class FakeRelayRepo:
     def get_remote_service_status(self) -> str:
         self.calls += 1
         return self.status
+
+    def probe_observed_public_ip(self) -> str:
+        self.calls += 1
+        return self.observed_ip
 
 
 def build_service(tmp_path: Path) -> tuple[XrayFrontendService, FakeFrontendRepo, FakeMetaRepo, FakeRelayRepo]:
@@ -263,7 +268,10 @@ def test_get_topology_health_uses_cached_value_within_ttl(tmp_path: Path) -> Non
 
     assert first.relay_service == "active"
     assert second.relay_service == "active"
-    assert relay_repo.calls == 2
+    assert first.egress_probe_ok is True
+    assert first.observed_egress_ip == "72.56.109.197"
+    assert second.relay_service == "active"
+    assert relay_repo.calls == 3
 
 
 def test_list_clients_marks_client_offline_when_last_seen_is_old(tmp_path: Path) -> None:

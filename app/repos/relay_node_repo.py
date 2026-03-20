@@ -19,19 +19,7 @@ class RelayNodeRepo:
 
     def get_remote_service_status(self) -> str:
         result = subprocess.run(
-            [
-                "ssh",
-                "-i",
-                self.ssh_key_path,
-                "-o",
-                "BatchMode=yes",
-                "-o",
-                "ConnectTimeout=3",
-                "-o",
-                "StrictHostKeyChecking=accept-new",
-                f"{self.ssh_user}@{self.host}",
-                f"sudo systemctl is-active {self.service_name}",
-            ],
+            self._ssh_command(f"sudo systemctl is-active {self.service_name}"),
             check=False,
             capture_output=True,
             text=True,
@@ -39,3 +27,29 @@ class RelayNodeRepo:
         if result.returncode == 0 and result.stdout.strip():
             return result.stdout.strip()
         return "unknown"
+
+    def probe_observed_public_ip(self) -> str:
+        result = subprocess.run(
+            self._ssh_command("curl -4fsS https://api.ipify.org"),
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode == 0:
+            return result.stdout.strip()
+        return ""
+
+    def _ssh_command(self, remote_command: str) -> list[str]:
+        return [
+            "ssh",
+            "-i",
+            self.ssh_key_path,
+            "-o",
+            "BatchMode=yes",
+            "-o",
+            "ConnectTimeout=3",
+            "-o",
+            "StrictHostKeyChecking=accept-new",
+            f"{self.ssh_user}@{self.host}",
+            remote_command,
+        ]

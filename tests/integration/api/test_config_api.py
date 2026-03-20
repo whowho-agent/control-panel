@@ -53,6 +53,8 @@ class FakeConfigService:
             expected_egress_ip="72.56.109.197",
             client_count=0,
             online_count=0,
+            egress_probe_ok=True,
+            observed_egress_ip="72.56.109.197",
         )
 
 

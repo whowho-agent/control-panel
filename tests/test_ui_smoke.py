@@ -54,5 +54,8 @@ def test_dashboard_renders_with_basic_auth() -> None:
 
     assert response.status_code == 200
     assert "Dashboard" in response.text
+    assert "72.56.109.197" in response.text
     assert "testserver" in response.text
+    app.dependency_overrides.clear()
+
     app.dependency_overrides.clear()

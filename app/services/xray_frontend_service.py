@@ -169,6 +169,7 @@ class XrayFrontendService:
             return cached_value
 
         clients = self.list_clients()
+        observed_egress_ip = self.relay_repo.probe_observed_public_ip()
         result = TopologyHealthResult(
             frontend_service=self.frontend_repo.get_frontend_service_status(),
             relay_service=self.relay_repo.get_remote_service_status(),
@@ -176,6 +177,8 @@ class XrayFrontendService:
             expected_egress_ip=self.expected_egress_ip,
             client_count=len(clients),
             online_count=sum(1 for item in clients if item.status == "online"),
+            egress_probe_ok=bool(observed_egress_ip) and observed_egress_ip == self.expected_egress_ip,
+            observed_egress_ip=observed_egress_ip,
         )
         self._topology_cache = {
             "value": result,

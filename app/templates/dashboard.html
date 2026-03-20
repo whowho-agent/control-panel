@@ -25,6 +25,12 @@
     <div>Public key: <code>{{ frontend.public_key }}</code></div>
   </div>
   <div class="card" style="grid-column:span 6">
+    <h2 style="margin-top:0">Synthetic egress probe</h2>
+    <div>Probe: <span class="badge {{ 'ok' if topology.egress_probe_ok else 'bad' }}">{{ 'ok' if topology.egress_probe_ok else 'failed' }}</span></div>
+    <div>Observed public IP: <code>{{ topology.observed_egress_ip or '-' }}</code></div>
+    <div>Expected public IP: <code>{{ topology.expected_egress_ip }}</code></div>
+  </div>
+  <div class="card" style="grid-column:span 6">
     <h2 style="margin-top:0">Recent clients</h2>
     <table>
       <thead><tr><th>Name</th><th>Status</th><th>Last seen</th><th>Source IP</th></tr></thead>

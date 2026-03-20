@@ -56,3 +56,5 @@ class TopologyHealthResult:
     expected_egress_ip: str
     client_count: int
     online_count: int
+    egress_probe_ok: bool = False
+    observed_egress_ip: str = ""

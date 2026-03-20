@@ -14,6 +14,8 @@ class FakeUiService:
             expected_egress_ip="72.56.109.197",
             client_count=1,
             online_count=1,
+            egress_probe_ok=True,
+            observed_egress_ip="72.56.109.197",
         )
 
     def get_frontend_config(self):
