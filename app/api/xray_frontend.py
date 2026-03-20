@@ -29,8 +29,13 @@ def list_clients(service: XrayFrontendService = Depends(get_xray_frontend_servic
     status_code=status.HTTP_201_CREATED,
     summary="Create frontend client",
 )
-def create_client(payload: CreateClientInput, service: XrayFrontendService = Depends(get_xray_frontend_service)) -> CreateClientOutput:
-    result = service.create_client(CreateFrontendClientCommand(name=payload.name, host=payload.host))
+def create_client(
+    payload: CreateClientInput,
+    service: XrayFrontendService = Depends(get_xray_frontend_service),
+) -> CreateClientOutput:
+    result = service.create_client(
+        CreateFrontendClientCommand(name=payload.name, host=payload.host)
+    )
     return CreateClientOutput(client=ClientOutput(**result.client.__dict__), uri=result.uri)
 
 
@@ -90,3 +95,4 @@ def update_relay_config(
 ) -> RelayConfigOutput:
     result = service.update_relay_config(UpdateRelayConfigCommand(**payload.model_dump()))
     return RelayConfigOutput(**result.__dict__)
+

@@ -1,11 +1,15 @@
 import subprocess
+
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 
 from app.api.deps import get_xray_frontend_service, require_basic_auth
 from app.domain.xray_frontend import CreateFrontendClientCommand
-from app.domain.xray_frontend_config import UpdateFrontendConfigCommand, UpdateRelayConfigCommand
+from app.domain.xray_frontend_config import (
+    UpdateFrontendConfigCommand,
+    UpdateRelayConfigCommand,
+)
 from app.services.xray_frontend_service import XrayFrontendService
 
 router = APIRouter(tags=["ui"])

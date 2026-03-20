@@ -48,13 +48,23 @@ class XrayFrontendRepo:
 
     def restart_frontend(self) -> None:
         try:
-            subprocess.run(["systemctl", "restart", self.service_name], check=True, capture_output=True, text=True)
+            subprocess.run(
+                ["systemctl", "restart", self.service_name],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
         except FileNotFoundError:
             return
 
     def get_frontend_service_status(self) -> str:
         try:
-            result = subprocess.run(["systemctl", "is-active", self.service_name], check=False, capture_output=True, text=True)
+            result = subprocess.run(
+                ["systemctl", "is-active", self.service_name],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
             status = result.stdout.strip() or result.stderr.strip() or "unknown"
             if status:
                 return status
