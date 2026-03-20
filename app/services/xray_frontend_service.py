@@ -108,6 +108,39 @@ class XrayFrontendService:
             online_count=sum(1 for item in clients if item.status == "online"),
         )
 
+    def get_frontend_config(self):
+        return self.frontend_repo.get_frontend_config()
+
+    def get_relay_config(self):
+        return self.frontend_repo.get_relay_config_from_frontend()
+
+    def update_frontend_config(self, command: UpdateFrontendConfigCommand):
+        config = self.frontend_repo.read_config()
+        inbound = next(item for item in config["inbounds"] if item.get("tag") == "frontend-in")
+        outbound = next(item for item in config["outbounds"] if item.get("tag") == "to-relay")
+        reality = inbound["streamSettings"]["realitySettings"]
+        inbound["port"] = command.port
+        reality["target"] = command.target
+        reality["serverNames"] = [command.server_name]
+        reality.setdefault("settings", {})["fingerprint"] = command.fingerprint
+        reality.setdefault("settings", {})["spiderX"] = command.spider_x
+        reality["shortIds"] = command.short_ids
+        outbound["settings"]["vnext"][0]["address"] = command.relay_host
+        outbound["settings"]["vnext"][0]["port"] = command.relay_port
+        self.frontend_repo.write_config(config)
+        self.frontend_repo.restart_frontend()
+        return self.frontend_repo.get_frontend_config()
+
+    def update_relay_config(self, command: UpdateRelayConfigCommand):
+        config = self.frontend_repo.read_config()
+        outbound = next(item for item in config["outbounds"] if item.get("tag") == "to-relay")
+        outbound["settings"]["vnext"][0]["address"] = command.public_host
+        outbound["settings"]["vnext"][0]["port"] = command.listen_port
+        outbound["settings"]["vnext"][0]["users"][0]["id"] = command.relay_uuid
+        self.frontend_repo.write_config(config)
+        self.frontend_repo.restart_frontend()
+        return self.frontend_repo.get_relay_config_from_frontend()
+
     def build_client_uri(self, host: str, client: FrontendClient, frontend_config) -> str:
         query = {
             "type": "tcp",

@@ -1,8 +1,18 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.api.deps import get_xray_frontend_service
-from app.api.schemas import ClientOutput, CreateClientInput, CreateClientOutput, TopologyHealthOutput
+from app.api.schemas import (
+    ClientOutput,
+    CreateClientInput,
+    CreateClientOutput,
+    FrontendConfigOutput,
+    RelayConfigOutput,
+    TopologyHealthOutput,
+    UpdateFrontendConfigInput,
+    UpdateRelayConfigInput,
+)
 from app.domain.xray_frontend import CreateFrontendClientCommand
+from app.domain.xray_frontend_config import UpdateFrontendConfigCommand, UpdateRelayConfigCommand
 from app.services.xray_frontend_service import XrayFrontendService
 
 router = APIRouter(prefix="/api/xray-frontend", tags=["xray-frontend"])
@@ -34,3 +44,27 @@ def delete_client(client_id: str, service: XrayFrontendService = Depends(get_xra
 @router.get("/topology-health", response_model=TopologyHealthOutput, summary="Get topology health")
 def get_topology_health(service: XrayFrontendService = Depends(get_xray_frontend_service)) -> TopologyHealthOutput:
     return TopologyHealthOutput(**service.get_topology_health().__dict__)
+n FrontendConfigOutput(**service.get_frontend_config().__dict__)
+
+
+@router.put("/config/frontend", response_model=FrontendConfigOutput, summary="Update frontend config")
+def update_frontend_config(
+    payload: UpdateFrontendConfigInput,
+    service: XrayFrontendService = Depends(get_xray_frontend_service),
+) -> FrontendConfigOutput:
+    result = service.update_frontend_config(UpdateFrontendConfigCommand(**payload.model_dump()))
+    return FrontendConfigOutput(**result.__dict__)
+
+
+@router.get("/config/relay", response_model=RelayConfigOutput, summary="Get relay config")
+def get_relay_config(service: XrayFrontendService = Depends(get_xray_frontend_service)) -> RelayConfigOutput:
+    return RelayConfigOutput(**service.get_relay_config().__dict__)
+
+
+@router.put("/config/relay", response_model=RelayConfigOutput, summary="Update relay config")
+def update_relay_config(
+    payload: UpdateRelayConfigInput,
+    service: XrayFrontendService = Depends(get_xray_frontend_service),
+) -> RelayConfigOutput:
+    result = service.update_relay_config(UpdateRelayConfigCommand(**payload.model_dump()))
+    return RelayConfigOutput(**result.__dict__)
