@@ -6,12 +6,15 @@ Pragmatic clean architecture layout:
 - `app/repos`
 - `app/services`
 - `app/api`
+- `app/templates`
 
 Current scope:
-- list frontend clients
-- create frontend client
-- delete frontend client
+- dashboard UI via FastAPI templates
+- clients UI via FastAPI templates
+- list/create/delete frontend clients
 - topology health
+- frontend config API
+- relay config API
 
 Entry point:
 - `app.main:app`

@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>Clients</h1>
+<div class="card" style="margin-bottom:16px;">
+  <form method="post" action="/clients">
+    <div style="display:grid;grid-template-columns:1fr 200px;gap:12px;">
+      <input type="text" name="name" placeholder="xray-client" required />
+      <button type="submit">Create client</button>
+    </div>
+  </form>
+</div>
+<div class="card">
+  <table>
+    <thead><tr><th>Name</th><th>Status</th><th>Last seen</th><th>Source IP</th><th>UUID</th><th>Short ID</th><th>URI</th><th>Action</th></tr></thead>
+    <tbody>
+    {% for row in rows %}
+      <tr>
+        <td>{{ row.client.name }}</td>
+        <td><span class="badge {{ 'ok' if row.client.status == 'online' else 'bad' }}">{{ row.client.status }}</span></td>
+        <td>{{ row.client.last_seen or '-' }}</td>
+        <td>{{ row.client.source_ip or '-' }}</td>
+        <td><code>{{ row.client.id }}</code></td>
+        <td><code>{{ row.client.short_id }}</code></td>
+        <td><a href="{{ row.uri }}">URI</a></td>
+        <td>
+          <form method="post" action="/clients/{{ row.client.id }}/delete" onsubmit="return confirm('Delete client?')">
+            <button class="danger" type="submit">Delete</button>
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

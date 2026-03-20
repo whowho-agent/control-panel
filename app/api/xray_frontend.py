@@ -44,7 +44,11 @@ def delete_client(client_id: str, service: XrayFrontendService = Depends(get_xra
 @router.get("/topology-health", response_model=TopologyHealthOutput, summary="Get topology health")
 def get_topology_health(service: XrayFrontendService = Depends(get_xray_frontend_service)) -> TopologyHealthOutput:
     return TopologyHealthOutput(**service.get_topology_health().__dict__)
-n FrontendConfigOutput(**service.get_frontend_config().__dict__)
+
+
+@router.get("/config/frontend", response_model=FrontendConfigOutput, summary="Get frontend config")
+def get_frontend_config(service: XrayFrontendService = Depends(get_xray_frontend_service)) -> FrontendConfigOutput:
+    return FrontendConfigOutput(**service.get_frontend_config().__dict__)
 
 
 @router.put("/config/frontend", response_model=FrontendConfigOutput, summary="Update frontend config")

@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>Dashboard</h1>
+<div class="grid">
+  <div class="card" style="grid-column:span 3"><div class="small">Clients</div><div class="kpi">{{ topology.client_count }}</div></div>
+  <div class="card" style="grid-column:span 3"><div class="small">Online now</div><div class="kpi">{{ online_count }}</div></div>
+  <div class="card" style="grid-column:span 3"><div class="small">Frontend</div><div class="kpi">{{ topology.frontend_service }}</div></div>
+  <div class="card" style="grid-column:span 3"><div class="small">Relay</div><div class="kpi">{{ topology.relay_service }}</div></div>
+  <div class="card" style="grid-column:span 12">
+    <h2 style="margin-top:0">Topology</h2>
+    <div class="topology">
+      <div class="node"><div class="small">Client Edge</div><div class="kpi">Internet Clients</div><div><span class="badge ok">traffic present</span></div></div>
+      <div class="arrow">→</div>
+      <div class="node"><div class="small">Gateway Node</div><div class="kpi">wg-gateway</div><div>Frontend: <span class="badge {{ 'ok' if topology.frontend_service == 'active' else 'bad' }}">{{ topology.frontend_service }}</span></div><div class="small">Entry 193.233.103.220:{{ frontend.port }}</div></div>
+      <div class="arrow">→</div>
+      <div class="node"><div class="small">Egress Node</div><div class="kpi">egress-gateway</div><div>Relay: <span class="badge {{ 'ok' if topology.relay_reachable else 'bad' }}">{{ 'reachable' if topology.relay_reachable else 'unreachable' }}</span></div><div class="small">Expected egress {{ topology.expected_egress_ip }}</div></div>
+    </div>
+  </div>
+  <div class="card" style="grid-column:span 6">
+    <h2 style="margin-top:0">Frontend config</h2>
+    <div>Port: <code>{{ frontend.port }}</code></div>
+    <div>SNI: <code>{{ frontend.server_name }}</code></div>
+    <div>Target: <code>{{ frontend.target }}</code></div>
+    <div>Relay host: <code>{{ frontend.relay_host }}:{{ frontend.relay_port }}</code></div>
+    <div>Public key: <code>{{ frontend.public_key }}</code></div>
+  </div>
+  <div class="card" style="grid-column:span 6">
+    <h2 style="margin-top:0">Recent clients</h2>
+    <table>
+      <thead><tr><th>Name</th><th>Status</th><th>Last seen</th><th>Source IP</th></tr></thead>
+      <tbody>
+      {% for client in clients[:5] %}
+        <tr>
+          <td>{{ client.name }}</td>
+          <td><span class="badge {{ 'ok' if client.status == 'online' else 'bad' }}">{{ client.status }}</span></td>
+          <td>{{ client.last_seen or '-' }}</td>
+          <td>{{ client.source_ip or '-' }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

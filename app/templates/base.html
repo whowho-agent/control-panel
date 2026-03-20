@@ -1,0 +1,43 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{{ title or 'Xray Control Plane' }}</title>
+  <style>
+    :root { --bg:#0b1020; --panel:#121933; --panel2:#182240; --text:#e9eefc; --muted:#9aa8d6; --ok:#25c27a; --bad:#f05d5e; --line:#2b3561; --link:#7ab8ff; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:linear-gradient(180deg,#0b1020,#0d1428); color:var(--text); font-family:Inter,system-ui,sans-serif; }
+    .wrap { max-width:1380px; margin:0 auto; padding:24px; }
+    .nav { display:flex; gap:10px; margin-bottom:20px; }
+    .nav a { color:var(--text); text-decoration:none; background:var(--panel); border:1px solid var(--line); padding:10px 14px; border-radius:10px; }
+    .grid { display:grid; grid-template-columns:repeat(12,1fr); gap:16px; }
+    .card { background:rgba(18,25,51,.92); border:1px solid var(--line); border-radius:16px; padding:18px; box-shadow:0 8px 28px rgba(0,0,0,.25); }
+    .kpi { font-size:28px; font-weight:700; margin-top:8px; }
+    .small { color:var(--muted); font-size:13px; }
+    .badge { display:inline-block; padding:4px 10px; border-radius:999px; font-size:12px; font-weight:700; }
+    .ok { background:rgba(37,194,122,.15); color:#7ef0b0; }
+    .bad { background:rgba(240,93,94,.15); color:#ff9b9b; }
+    .topology { display:grid; grid-template-columns:1fr 120px 1fr 120px 1fr; gap:10px; align-items:center; }
+    .node { background:var(--panel2); border:1px solid var(--line); border-radius:14px; padding:16px; min-height:120px; }
+    .arrow { text-align:center; color:var(--muted); font-size:22px; }
+    table { width:100%; border-collapse:collapse; }
+    th, td { border-bottom:1px solid var(--line); padding:10px; text-align:left; vertical-align:top; }
+    input, button { border-radius:10px; padding:10px; border:1px solid var(--line); }
+    input { width:100%; background:#0b1020; color:var(--text); }
+    button { background:#3b82f6; color:white; cursor:pointer; }
+    button.danger { background:#c0392b; }
+    code { font-size:12px; word-break:break-all; }
+    a { color:var(--link); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="nav">
+      <a href="/">Dashboard</a>
+      <a href="/clients">Clients</a>
+    </div>
+    {% block content %}{% endblock %}
+  </div>
+</body>
+</html>
