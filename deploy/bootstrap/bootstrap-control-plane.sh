@@ -18,11 +18,12 @@ if ! command -v docker >/dev/null 2>&1; then
 fi
 
 apt-get update >/dev/null
-apt-get install -y rsync docker-compose-plugin >/dev/null || true
+apt-get install -y docker-compose-v2 >/dev/null || apt-get install -y docker-compose-plugin >/dev/null || true
 mkdir -p "$TARGET_DIR"
-rsync -az --delete \
-  --exclude '.git' --exclude 'memory' --exclude 'keys' --exclude 'secrets' --exclude '.openclaw' \
-  "$ROOT_DIR/" "$TARGET_DIR/"
+find "$TARGET_DIR" -mindepth 1 -maxdepth 1 \
+  ! -name runtime \
+  -exec rm -rf {} +
+cp -a "$ROOT_DIR/." "$TARGET_DIR/"
 
 cp "$ENV_FILE" "$TARGET_DIR/.env"
 mkdir -p "$TARGET_DIR/runtime/frontend" "$TARGET_DIR/runtime/ssh"

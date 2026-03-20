@@ -4,17 +4,26 @@
   vars:
     project_root: /opt/control-panel
   tasks:
-    - name: Ensure project root exists
+    - name: Ensure project directories exist
       file:
-        path: "{{ project_root }}"
+        path: "{{ item }}"
         state: directory
         mode: '0755'
+      loop:
+        - "{{ project_root }}"
+        - "{{ project_root }}/deploy/bootstrap"
+        - "{{ project_root }}/deploy/templates"
+        - "{{ project_root }}/deploy/env"
 
-    - name: Copy project tree to egress
+    - name: Copy egress bootstrap assets
       copy:
-        src: "{{ playbook_dir }}/../../../"
-        dest: "{{ project_root }}/"
-        mode: preserve
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        mode: "{{ item.mode }}"
+      loop:
+        - { src: "{{ playbook_dir }}/../../bootstrap/bootstrap-egress.sh", dest: "{{ project_root }}/deploy/bootstrap/bootstrap-egress.sh", mode: "0755" }
+        - { src: "{{ playbook_dir }}/../../bootstrap/lib.sh", dest: "{{ project_root }}/deploy/bootstrap/lib.sh", mode: "0644" }
+        - { src: "{{ playbook_dir }}/../../templates/xray-relay.config.json.template", dest: "{{ project_root }}/deploy/templates/xray-relay.config.json.template", mode: "0644" }
 
     - name: Write egress env
       copy:

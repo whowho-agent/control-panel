@@ -4,16 +4,33 @@
   vars:
     project_root: /opt/control-panel
   tasks:
-    - name: Ensure project root exists
+    - name: Ensure project directories exist
       file:
-        path: "{{ project_root }}"
+        path: "{{ item }}"
         state: directory
         mode: '0755'
+      loop:
+        - "{{ project_root }}"
+        - "{{ project_root }}/app"
+        - "{{ project_root }}/deploy/bootstrap"
+        - "{{ project_root }}/deploy/env"
 
-    - name: Copy project tree to gateway
+    - name: Copy control-plane app assets
       copy:
-        src: "{{ playbook_dir }}/../../../"
-        dest: "{{ project_root }}/"
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        mode: "{{ item.mode | default('0644') }}"
+      loop:
+        - { src: "{{ playbook_dir }}/../../../Dockerfile", dest: "{{ project_root }}/Dockerfile" }
+        - { src: "{{ playbook_dir }}/../../../docker-compose.yml", dest: "{{ project_root }}/docker-compose.yml" }
+        - { src: "{{ playbook_dir }}/../../../requirements.txt", dest: "{{ project_root }}/requirements.txt" }
+        - { src: "{{ playbook_dir }}/../../bootstrap/bootstrap-control-plane.sh", dest: "{{ project_root }}/deploy/bootstrap/bootstrap-control-plane.sh", mode: "0755" }
+        - { src: "{{ playbook_dir }}/../../bootstrap/lib.sh", dest: "{{ project_root }}/deploy/bootstrap/lib.sh" }
+
+    - name: Copy app package
+      copy:
+        src: "{{ playbook_dir }}/../../../app/"
+        dest: "{{ project_root }}/app/"
         mode: preserve
 
     - name: Write control-plane env
