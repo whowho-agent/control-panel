@@ -23,8 +23,10 @@ source "$EGRESS_ENV_FILE"
 EGRESS_SSH_PORT="${EGRESS_SSH_PORT:-22}"
 EGRESS_SSH_KEY_PATH="${EGRESS_SSH_KEY_PATH:-}"
 SSH_OPTS=(-p "$EGRESS_SSH_PORT" -o BatchMode=yes -o StrictHostKeyChecking=accept-new)
+SCP_OPTS=(-P "$EGRESS_SSH_PORT" -o BatchMode=yes -o StrictHostKeyChecking=accept-new)
 if [[ -n "$EGRESS_SSH_KEY_PATH" ]]; then
   SSH_OPTS+=( -i "$EGRESS_SSH_KEY_PATH" )
+  SCP_OPTS+=( -i "$EGRESS_SSH_KEY_PATH" )
 fi
 REMOTE_TARGET="${EGRESS_SSH_USER}@${EGRESS_HOST}"
 
@@ -60,7 +62,7 @@ ssh "${SSH_OPTS[@]}" "$REMOTE_TARGET" 'true'
 
 echo "==> staging bootstrap files on $REMOTE_TARGET"
 ssh "${SSH_OPTS[@]}" "$REMOTE_TARGET" "mkdir -p '$REMOTE_BASE_DIR/deploy/bootstrap' '$REMOTE_BASE_DIR/deploy/templates' '$REMOTE_BASE_DIR/deploy/env'"
-scp "${SSH_OPTS[@]}" \
+scp "${SCP_OPTS[@]}" \
   "$ROOT_DIR/deploy/bootstrap/bootstrap-egress.sh" \
   "$ROOT_DIR/deploy/bootstrap/lib.sh" \
   "$ROOT_DIR/deploy/templates/xray-relay.config.json.template" \
