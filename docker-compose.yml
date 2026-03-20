@@ -26,5 +26,8 @@ services:
       XRAY_ADMIN_USER: ${XRAY_ADMIN_USER:?set-in-.env}
       XRAY_ADMIN_PASSWORD: ${XRAY_ADMIN_PASSWORD:?set-in-.env}
     volumes:
-      - ${XRAY_FRONTEND_HOST_RUNTIME_DIR:-/opt/xray-frontend}:/data/frontend
+      - ${XRAY_FRONTEND_HOST_RUNTIME_DIR:-/opt/xray-frontend}/config.json:/data/frontend/config.json:rw
+      - ${XRAY_FRONTEND_HOST_RUNTIME_DIR:-/opt/xray-frontend}/access.log:/data/frontend/access.log:rw
+      - ${XRAY_FRONTEND_HOST_RUNTIME_DIR:-/opt/xray-frontend}/clients-meta.json:/data/frontend/clients-meta.json:rw
+      - ${XRAY_FRONTEND_HOST_RUNTIME_DIR:-/opt/xray-frontend}/xray:/data/frontend/xray:ro
       - ${XRAY_RELAY_SSH_KEY_SOURCE:?set-in-.env}:/run/secrets/relay_ssh_key:ro

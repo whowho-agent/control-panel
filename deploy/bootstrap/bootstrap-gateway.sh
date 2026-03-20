@@ -40,7 +40,7 @@ sudo chmod 755 /opt/xray-frontend/xray
 
 sudo install -d -m 755 /opt/xray-frontend
 envsubst < "$TEMPLATE" | sudo tee /opt/xray-frontend/config.json >/dev/null
-sudo touch "$XRAY_FRONTEND_ACCESS_LOG_PATH" "$XRAY_FRONTEND_ERROR_LOG_PATH"
+sudo touch "$XRAY_FRONTEND_ACCESS_LOG_PATH" "$XRAY_FRONTEND_ERROR_LOG_PATH" /opt/xray-frontend/clients-meta.json
 
 sudo tee /etc/systemd/system/xray-frontend.service >/dev/null <<'EOF'
 [Unit]
