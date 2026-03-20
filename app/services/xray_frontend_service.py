@@ -4,6 +4,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 from app.domain.xray_frontend import CreateFrontendClientCommand, FrontendClient, FrontendClientUriResult, TopologyHealthResult
+from app.domain.xray_frontend_config import UpdateFrontendConfigCommand, UpdateRelayConfigCommand
 from app.repos.client_meta_repo import ClientMetaRepo
 from app.repos.relay_node_repo import RelayNodeRepo
 from app.repos.xray_frontend_repo import XrayFrontendRepo
@@ -94,6 +95,17 @@ class XrayFrontendService:
         meta = self.meta_repo.read()
         meta.get("clients", {}).pop(client_id, None)
         self.meta_repo.write(meta)
+        self.frontend_repo.restart_frontend()
+        return True
+
+    def set_client_enabled(self, client_id: str, enabled: bool) -> bool:
+        config = self.frontend_repo.read_config()
+        inbound = next(item for item in config["inbounds"] if item.get("tag") == "frontend-in")
+        target = next((item for item in inbound["settings"].get("clients", []) if item.get("id") == client_id), None)
+        if target is None:
+            return False
+        target["enable"] = enabled
+        self.frontend_repo.write_config(config)
         self.frontend_repo.restart_frontend()
         return True
 

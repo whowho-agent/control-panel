@@ -11,12 +11,13 @@
 </div>
 <div class="card">
   <table>
-    <thead><tr><th>Name</th><th>Status</th><th>Last seen</th><th>Source IP</th><th>UUID</th><th>Short ID</th><th>URI</th><th>Action</th></tr></thead>
+    <thead><tr><th>Name</th><th>Status</th><th>Enabled</th><th>Last seen</th><th>Source IP</th><th>UUID</th><th>Short ID</th><th>URI</th><th>QR</th><th>Action</th></tr></thead>
     <tbody>
     {% for row in rows %}
       <tr>
         <td>{{ row.client.name }}</td>
         <td><span class="badge {{ 'ok' if row.client.status == 'online' else 'bad' }}">{{ row.client.status }}</span></td>
+        <td><span class="badge {{ 'ok' if row.client.enabled else 'bad' }}">{{ 'enabled' if row.client.enabled else 'disabled' }}</span></td>
         <td>{{ row.client.last_seen or '-' }}</td>
         <td>{{ row.client.source_ip or '-' }}</td>
         <td><code>{{ row.client.id }}</code></td>
@@ -24,7 +25,16 @@
         <td><a href="{{ row.uri }}">URI</a></td>
         <td><a href="/clients/{{ row.client.id }}/qr" target="_blank">QR</a></td>
         <td>
-          <form method="post" action="/clients/{{ row.client.id }}/delete" onsubmit="return confirm('Delete client?')">
+          {% if row.client.enabled %}
+          <form method="post" action="/clients/{{ row.client.id }}/disable" style="display:inline-block;margin-right:8px;">
+            <button type="submit">Disable</button>
+          </form>
+          {% else %}
+          <form method="post" action="/clients/{{ row.client.id }}/enable" style="display:inline-block;margin-right:8px;">
+            <button type="submit">Enable</button>
+          </form>
+          {% endif %}
+          <form method="post" action="/clients/{{ row.client.id }}/delete" onsubmit="return confirm('Delete client?')" style="display:inline-block;">
             <button class="danger" type="submit">Delete</button>
           </form>
         </td>

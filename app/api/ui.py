@@ -89,6 +89,26 @@ def delete_client(
     return RedirectResponse(url="/clients", status_code=303)
 
 
+@router.post("/clients/{client_id}/enable")
+def enable_client(
+    client_id: str,
+    _: str = Depends(require_basic_auth),
+    service: XrayFrontendService = Depends(get_xray_frontend_service),
+) -> RedirectResponse:
+    service.set_client_enabled(client_id, True)
+    return RedirectResponse(url="/clients", status_code=303)
+
+
+@router.post("/clients/{client_id}/disable")
+def disable_client(
+    client_id: str,
+    _: str = Depends(require_basic_auth),
+    service: XrayFrontendService = Depends(get_xray_frontend_service),
+) -> RedirectResponse:
+    service.set_client_enabled(client_id, False)
+    return RedirectResponse(url="/clients", status_code=303)
+
+
 @router.get("/config", response_class=HTMLResponse)
 def config_page(
     request: Request,

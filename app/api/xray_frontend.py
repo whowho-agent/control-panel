@@ -41,6 +41,24 @@ def delete_client(client_id: str, service: XrayFrontendService = Depends(get_xra
         raise HTTPException(status_code=404, detail="client_not_found")
 
 
+@router.post("/clients/{client_id}/enable", response_model=ClientOutput, summary="Enable frontend client")
+def enable_client(client_id: str, service: XrayFrontendService = Depends(get_xray_frontend_service)) -> ClientOutput:
+    updated = service.set_client_enabled(client_id, True)
+    if not updated:
+        raise HTTPException(status_code=404, detail="client_not_found")
+    client = next(item for item in service.list_clients() if item.id == client_id)
+    return ClientOutput(**client.__dict__)
+
+
+@router.post("/clients/{client_id}/disable", response_model=ClientOutput, summary="Disable frontend client")
+def disable_client(client_id: str, service: XrayFrontendService = Depends(get_xray_frontend_service)) -> ClientOutput:
+    updated = service.set_client_enabled(client_id, False)
+    if not updated:
+        raise HTTPException(status_code=404, detail="client_not_found")
+    client = next(item for item in service.list_clients() if item.id == client_id)
+    return ClientOutput(**client.__dict__)
+
+
 @router.get("/topology-health", response_model=TopologyHealthOutput, summary="Get topology health")
 def get_topology_health(service: XrayFrontendService = Depends(get_xray_frontend_service)) -> TopologyHealthOutput:
     return TopologyHealthOutput(**service.get_topology_health().__dict__)

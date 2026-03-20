@@ -1,3 +1,4 @@
+import os
 import secrets
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
@@ -9,20 +10,21 @@ from app.services.xray_frontend_service import XrayFrontendService
 
 
 class Settings:
-    frontend_config_path = "/opt/xray-frontend/config.json"
-    frontend_access_log_path = "/opt/xray-frontend/access.log"
-    frontend_service_name = "xray-frontend"
-    xray_binary_path = "/opt/xray-frontend/xray"
-    meta_path = "/opt/xray-frontend/clients-meta.json"
-    relay_host = "72.56.109.197"
-    relay_port = 9443
-    relay_service_name = "xray-relay"
-    relay_ssh_key_path = "/root/.openclaw/workspace/keys/rabotyaga_ed25519"
-    relay_ssh_user = "root"
-    online_window_minutes = 5
-    expected_egress_ip = "72.56.109.197"
-    admin_user = "admin"
-    admin_password = "cfuQXkmySEy7Q0MYN8ruwCs-"
+    def __init__(self) -> None:
+        self.frontend_config_path = os.getenv("XRAY_FRONTEND_CONFIG_PATH", "/opt/xray-frontend/config.json")
+        self.frontend_access_log_path = os.getenv("XRAY_FRONTEND_ACCESS_LOG_PATH", "/opt/xray-frontend/access.log")
+        self.frontend_service_name = os.getenv("XRAY_FRONTEND_SERVICE_NAME", "xray-frontend")
+        self.xray_binary_path = os.getenv("XRAY_BINARY_PATH", "/opt/xray-frontend/xray")
+        self.meta_path = os.getenv("XRAY_CLIENT_META_PATH", "/opt/xray-frontend/clients-meta.json")
+        self.relay_host = os.getenv("XRAY_RELAY_HOST", "72.56.109.197")
+        self.relay_port = int(os.getenv("XRAY_RELAY_PORT", "9443"))
+        self.relay_service_name = os.getenv("XRAY_RELAY_SERVICE_NAME", "xray-relay")
+        self.relay_ssh_key_path = os.getenv("XRAY_RELAY_SSH_KEY_PATH", "/root/.openclaw/workspace/keys/rabotyaga_ed25519")
+        self.relay_ssh_user = os.getenv("XRAY_RELAY_SSH_USER", "root")
+        self.online_window_minutes = int(os.getenv("XRAY_ONLINE_WINDOW_MINUTES", "5"))
+        self.expected_egress_ip = os.getenv("XRAY_EXPECTED_EGRESS_IP", "72.56.109.197")
+        self.admin_user = os.getenv("XRAY_ADMIN_USER", "admin")
+        self.admin_password = os.getenv("XRAY_ADMIN_PASSWORD", "cfuQXkmySEy7Q0MYN8ruwCs-")
 
 
 security = HTTPBasic()
@@ -47,8 +49,7 @@ def require_basic_auth(
     return credentials.username
 
 
-def get_xray_frontend_service() -> XrayFrontendService:
-    settings = Settings()
+def get_xray_frontend_service(settings: Settings = Depends(get_settings)) -> XrayFrontendService:
     frontend_repo = XrayFrontendRepo(
         config_path=settings.frontend_config_path,
         access_log_path=settings.frontend_access_log_path,

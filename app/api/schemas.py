@@ -15,6 +15,7 @@ class ClientOutput(BaseModel):
     last_seen: str = ""
     source_ip: str = ""
     status: str
+    enabled: bool = True
 
 
 class CreateClientOutput(BaseModel):

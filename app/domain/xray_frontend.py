@@ -11,6 +11,7 @@ class FrontendClient:
     last_seen: str = ""
     source_ip: str = ""
     status: str = "offline"
+    enabled: bool = True
 
 
 @dataclass(slots=True)
