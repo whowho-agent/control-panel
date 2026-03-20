@@ -10,6 +10,8 @@ class ClientMetaRepo:
         if not self.meta_path.exists():
             return {"clients": {}}
         raw = self.meta_path.read_text()
+        if not raw.strip():
+            return {"clients": {}}
         if raw.endswith("\\n"):
             raw = raw[:-2] + "\n"
         return json.loads(raw)
