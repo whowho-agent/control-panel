@@ -19,7 +19,7 @@ services:
       XRAY_RELAY_HOST: ${XRAY_RELAY_HOST:?set-in-.env}
       XRAY_RELAY_PORT: ${XRAY_RELAY_PORT:?set-in-.env}
       XRAY_RELAY_SERVICE_NAME: ${XRAY_RELAY_SERVICE_NAME:-xray-relay}
-      XRAY_RELAY_SSH_KEY_PATH: ${XRAY_RELAY_SSH_KEY_PATH:-/run/secrets/relay_ssh_key}
+      XRAY_RELAY_SSH_KEY_PATH: ${XRAY_RELAY_SSH_KEY_PATH:-/relay_ssh_key}
       XRAY_RELAY_SSH_USER: ${XRAY_RELAY_SSH_USER:?set-in-.env}
       XRAY_ONLINE_WINDOW_MINUTES: ${XRAY_ONLINE_WINDOW_MINUTES:-5}
       XRAY_EXPECTED_EGRESS_IP: ${XRAY_EXPECTED_EGRESS_IP:?set-in-.env}
@@ -30,4 +30,4 @@ services:
       - ${XRAY_FRONTEND_HOST_RUNTIME_DIR:-/opt/xray-frontend}/access.log:/data/frontend/access.log:rw
       - ${XRAY_FRONTEND_HOST_RUNTIME_DIR:-/opt/xray-frontend}/clients-meta.json:/data/frontend/clients-meta.json:rw
       - ${XRAY_FRONTEND_HOST_RUNTIME_DIR:-/opt/xray-frontend}/xray:/data/frontend/xray:ro
-      - ${XRAY_RELAY_SSH_KEY_SOURCE:?set-in-.env}:/run/secrets/relay_ssh_key.pem:ro
+      - ${XRAY_RELAY_SSH_KEY_SOURCE:?set-in-.env}:/relay_ssh_key:ro

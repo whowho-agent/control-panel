@@ -48,7 +48,7 @@
           XRAY_RELAY_HOST={{ xray_relay_private_host if xray_transport_mode == 'ipsec' else xray_relay_host }}
           XRAY_RELAY_PORT={{ xray_relay_port }}
           XRAY_RELAY_SERVICE_NAME=xray-relay
-          XRAY_RELAY_SSH_KEY_PATH=/run/secrets/relay_ssh_key.pem
+          XRAY_RELAY_SSH_KEY_PATH=/relay_ssh_key
           XRAY_RELAY_SSH_USER={{ xray_relay_ssh_user }}
           XRAY_ONLINE_WINDOW_MINUTES=5
           XRAY_EXPECTED_EGRESS_IP={{ xray_expected_egress_ip }}
