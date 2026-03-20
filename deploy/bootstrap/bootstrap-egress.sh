@@ -14,11 +14,10 @@ source "$ENV_FILE"
 : "${XRAY_RELAY_UUID:?}"
 
 sudo apt-get update >/dev/null
-sudo apt-get install -y curl >/dev/null
+sudo apt-get install -y curl gettext-base >/dev/null
 sudo install -d -m 755 /opt/xray-relay
-if [[ ! -f /opt/xray-relay/xray ]]; then
-  echo "place xray binary at /opt/xray-relay/xray before running bootstrap"
-  exit 1
+if [[ ! -x /opt/xray-relay/xray ]]; then
+  sudo bash -c "$(declare -f install_xray_binary); install_xray_binary /opt/xray-relay"
 fi
 sudo chmod 755 /opt/xray-relay/xray
 

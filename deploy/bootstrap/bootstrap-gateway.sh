@@ -4,12 +4,10 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 ENV_FILE="${1:-$ROOT_DIR/deploy/env/gateway.env}"
 TEMPLATE="$ROOT_DIR/deploy/templates/xray-frontend.config.json.template"
+# shellcheck source=./lib.sh
+source "$ROOT_DIR/deploy/bootstrap/lib.sh"
 
-if [[ ! -f "$ENV_FILE" ]]; then
-  echo "gateway env file not found: $ENV_FILE"
-  exit 1
-fi
-
+require_env_file "$ENV_FILE"
 source "$ENV_FILE"
 
 : "${XRAY_FRONTEND_PORT:?}"
@@ -38,6 +36,7 @@ if [[ ! -x /opt/xray-frontend/xray ]]; then
 fi
 sudo chmod 755 /opt/xray-frontend/xray
 
+sudo install -d -m 755 /opt/xray-frontend
 envsubst < "$TEMPLATE" | sudo tee /opt/xray-frontend/config.json >/dev/null
 sudo touch "$XRAY_FRONTEND_ACCESS_LOG_PATH" "$XRAY_FRONTEND_ERROR_LOG_PATH"
 
@@ -62,4 +61,3 @@ EOF
 sudo systemctl daemon-reload
 sudo systemctl enable --now xray-frontend
 sudo systemctl status xray-frontend --no-pager -l | sed -n '1,20p'
-end --no-pager -l | sed -n '1,20p'

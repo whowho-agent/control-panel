@@ -149,6 +149,14 @@ Responsibilities:
 - write systemd unit for `xray-relay.service`
 - enable and start service
 
+### bootstrap-standalone.sh
+Responsibilities:
+- act as the preferred single entrypoint when run on the gateway node
+- connect to the egress node over SSH
+- stage `bootstrap-egress.sh`, `lib.sh`, template, and `egress.env` on the remote host
+- run remote relay bootstrap on egress
+- bootstrap local gateway frontend with `XRAY_RELAY_HOST` pointed at the selected egress host
+
 ### bootstrap-control-plane.sh
 Responsibilities:
 - prepare control-plane directory
