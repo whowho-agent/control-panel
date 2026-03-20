@@ -5,12 +5,12 @@
   "inbounds": [
     {
       "listen": "0.0.0.0",
-      "port": {{XRAY_RELAY_PORT}},
+      "port": ${XRAY_RELAY_PORT},
       "protocol": "vless",
       "settings": {
         "clients": [
           {
-            "id": "{{XRAY_RELAY_UUID}}"
+            "id": "${XRAY_RELAY_UUID}"
           }
         ],
         "decryption": "none"

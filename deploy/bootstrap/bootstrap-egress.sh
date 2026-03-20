@@ -8,7 +8,9 @@ TEMPLATE="$ROOT_DIR/deploy/templates/xray-relay.config.json.template"
 source "$ROOT_DIR/deploy/bootstrap/lib.sh"
 
 require_env_file "$ENV_FILE"
+set -a
 source "$ENV_FILE"
+set +a
 
 : "${XRAY_RELAY_PORT:?}"
 : "${XRAY_RELAY_UUID:?}"
