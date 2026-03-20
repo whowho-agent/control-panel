@@ -71,6 +71,14 @@
         enabled: true
         state: started
 
+    - name: Install relay SSH private key on gateway
+      copy:
+        src: "{{ xray_relay_ssh_private_key_local_path }}"
+        dest: "{{ xray_relay_ssh_key_source }}"
+        owner: deploy
+        group: deploy
+        mode: '0600'
+
     - name: Run control-plane bootstrap
       command: bash {{ project_root }}/deploy/bootstrap/bootstrap-control-plane.sh {{ project_root }}/deploy/env/control-plane.env
 

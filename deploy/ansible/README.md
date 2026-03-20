@@ -27,4 +27,5 @@ ansible-playbook -i deploy/ansible/inventory.ini deploy/ansible/site.yml
   - `direct` → `xray_relay_host`
   - `ipsec` → `xray_relay_private_host`
 - `playbooks/ipsec.yml` applies role `ipsec_transport` when `xray_transport_mode=ipsec`.
-- The current role provisions a baseline strongSwan PSK tunnel contract and config files. Treat it as the starting point for a hardened production IPSec role, not the final word.
+- `playbooks/control-plane.yml` expects `xray_relay_ssh_private_key_local_path` on the Ansible controller and copies it to `xray_relay_ssh_key_source` on the gateway so control-plane can SSH into egress.
+- The current IPSec role provisions a baseline strongSwan PSK tunnel contract and config files. Treat it as the starting point for a hardened production IPSec role, not the final word.
