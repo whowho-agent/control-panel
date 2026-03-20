@@ -1,0 +1,5 @@
+[gateway]
+gateway-1 ansible_host=gateway.example.com ansible_user=deploy
+
+[egress]
+egress-1 ansible_host=egress.example.com ansible_user=deploy

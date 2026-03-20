@@ -1,0 +1,42 @@
+- name: Deploy control-plane
+  hosts: gateway
+  become: true
+  vars:
+    project_root: /opt/control-panel
+  tasks:
+    - name: Ensure project root exists
+      file:
+        path: "{{ project_root }}"
+        state: directory
+        mode: '0755'
+
+    - name: Copy project tree to gateway
+      copy:
+        src: "{{ playbook_dir }}/../../../"
+        dest: "{{ project_root }}/"
+        mode: preserve
+
+    - name: Write control-plane env
+      copy:
+        dest: "{{ project_root }}/deploy/env/control-plane.env"
+        mode: '0600'
+        content: |
+          XRAY_FRONTEND_CONFIG_PATH=/data/frontend/config.json
+          XRAY_FRONTEND_ACCESS_LOG_PATH=/data/frontend/access.log
+          XRAY_FRONTEND_SERVICE_NAME=xray-frontend
+          XRAY_BINARY_PATH=/data/frontend/xray
+          XRAY_CLIENT_META_PATH=/data/frontend/clients-meta.json
+          XRAY_RELAY_HOST={{ xray_relay_host }}
+          XRAY_RELAY_PORT={{ xray_relay_port }}
+          XRAY_RELAY_SERVICE_NAME=xray-relay
+          XRAY_RELAY_SSH_KEY_PATH=/run/secrets/relay_ssh_key
+          XRAY_RELAY_SSH_USER={{ xray_relay_ssh_user }}
+          XRAY_ONLINE_WINDOW_MINUTES=5
+          XRAY_EXPECTED_EGRESS_IP={{ xray_expected_egress_ip }}
+          XRAY_ADMIN_USER={{ xray_admin_user }}
+          XRAY_ADMIN_PASSWORD={{ xray_admin_password }}
+          XRAY_TOPOLOGY_CACHE_TTL_SECONDS=10
+          XRAY_RELAY_SSH_KEY_SOURCE={{ xray_relay_ssh_key_source }}
+
+    - name: Run control-plane bootstrap
+      command: bash {{ project_root }}/deploy/bootstrap/bootstrap-control-plane.sh {{ project_root }}/deploy/env/control-plane.env

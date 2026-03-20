@@ -1,0 +1,35 @@
+- name: Bootstrap gateway frontend
+  hosts: gateway
+  become: true
+  vars:
+    project_root: /opt/control-panel
+  tasks:
+    - name: Ensure project root exists
+      file:
+        path: "{{ project_root }}"
+        state: directory
+        mode: '0755'
+
+    - name: Copy project tree to gateway
+      copy:
+        src: "{{ playbook_dir }}/../../../"
+        dest: "{{ project_root }}/"
+        mode: preserve
+
+    - name: Write gateway env
+      copy:
+        dest: "{{ project_root }}/deploy/env/gateway.env"
+        mode: '0600'
+        content: |
+          XRAY_FRONTEND_PORT={{ xray_frontend_port }}
+          XRAY_FRONTEND_SERVER_NAME={{ xray_frontend_server_name }}
+          XRAY_FRONTEND_TARGET={{ xray_frontend_target }}
+          XRAY_FRONTEND_FINGERPRINT={{ xray_frontend_fingerprint }}
+          XRAY_FRONTEND_SHORT_IDS={{ xray_frontend_short_ids }}
+          XRAY_FRONTEND_REALITY_PRIVATE_KEY={{ xray_frontend_reality_private_key }}
+          XRAY_RELAY_HOST={{ xray_relay_host }}
+          XRAY_RELAY_PORT={{ xray_relay_port }}
+          XRAY_RELAY_UUID={{ xray_relay_uuid }}
+
+    - name: Run gateway bootstrap
+      command: bash {{ project_root }}/deploy/bootstrap/bootstrap-gateway.sh {{ project_root }}/deploy/env/gateway.env

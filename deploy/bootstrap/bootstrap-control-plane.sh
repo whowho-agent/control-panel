@@ -4,6 +4,8 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 ENV_FILE="${1:-$ROOT_DIR/deploy/env/control-plane.env}"
 TARGET_DIR="${CONTROL_PLANE_TARGET_DIR:-/opt/control-panel-container}"
+# shellcheck source=./lib.sh
+source "$ROOT_DIR/deploy/bootstrap/lib.sh"
 
 if [[ ! -f "$ENV_FILE" ]]; then
   echo "control-plane env file not found: $ENV_FILE"
