@@ -84,7 +84,7 @@ class XrayFrontendService:
         meta.setdefault("clients", {})[client_id] = {
             "name": command.name,
             "short_id": short_id,
-            "created_at": datetime.utcnow().isoformat() + "Z",
+            "created_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
             "last_seen": "",
             "source_ip": "",
         }

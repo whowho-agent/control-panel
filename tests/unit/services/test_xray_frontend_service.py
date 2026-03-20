@@ -1,0 +1,245 @@
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+
+from app.domain.xray_frontend import CreateFrontendClientCommand, FrontendConfigResult, RelayConfigResult
+from app.domain.xray_frontend_config import UpdateFrontendConfigCommand, UpdateRelayConfigCommand
+from app.services.xray_frontend_service import XrayFrontendService
+
+
+class FakeFrontendRepo:
+    def __init__(self, config: dict, access_log_path: Path) -> None:
+        self.config = config
+        self.access_log_path = access_log_path
+        self.restart_calls = 0
+
+    def read_config(self) -> dict:
+        return self.config
+
+    def write_config(self, config: dict) -> None:
+        self.config = config
+
+    def get_frontend_config(self) -> FrontendConfigResult:
+        inbound = next(item for item in self.config["inbounds"] if item["tag"] == "frontend-in")
+        outbound = next(item for item in self.config["outbounds"] if item["tag"] == "to-relay")
+        reality = inbound["streamSettings"]["realitySettings"]
+        relay = outbound["settings"]["vnext"][0]
+        return FrontendConfigResult(
+            port=inbound["port"],
+            server_name=reality["serverNames"][0],
+            public_key="pub",
+            private_key=reality["privateKey"],
+            fingerprint=reality["settings"]["fingerprint"],
+            short_ids=reality["shortIds"],
+            spider_x=reality["settings"]["spiderX"],
+            target=reality["target"],
+            relay_host=relay["address"],
+            relay_port=relay["port"],
+            relay_uuid=relay["users"][0]["id"],
+        )
+
+    def get_relay_config_from_frontend(self) -> RelayConfigResult:
+        frontend = self.get_frontend_config()
+        return RelayConfigResult(
+            host=frontend.relay_host,
+            port=frontend.relay_port,
+            uuid=frontend.relay_uuid,
+        )
+
+    def restart_frontend(self) -> None:
+        self.restart_calls += 1
+
+    def get_frontend_service_status(self) -> str:
+        return "configured"
+
+
+class FakeMetaRepo:
+    def __init__(self, meta: dict) -> None:
+        self.meta = meta
+
+    def read(self) -> dict:
+        return self.meta
+
+    def write(self, meta: dict) -> None:
+        self.meta = meta
+
+
+class FakeRelayRepo:
+    def __init__(self, reachable: bool = True, status: str = "active") -> None:
+        self.reachable = reachable
+        self.status = status
+        self.calls = 0
+
+    def is_port_reachable(self, timeout: int = 2) -> bool:
+        self.calls += 1
+        return self.reachable
+
+    def get_remote_service_status(self) -> str:
+        self.calls += 1
+        return self.status
+
+
+def build_service(tmp_path: Path) -> tuple[XrayFrontendService, FakeFrontendRepo, FakeMetaRepo, FakeRelayRepo]:
+    access_log_path = tmp_path / "access.log"
+    config = {
+        "inbounds": [
+            {
+                "tag": "frontend-in",
+                "port": 9444,
+                "settings": {"clients": [{"id": "client-1", "enable": True}]},
+                "streamSettings": {
+                    "realitySettings": {
+                        "privateKey": "priv",
+                        "serverNames": ["mitigator.ru"],
+                        "target": "mitigator.ru:443",
+                        "shortIds": ["sid-a", "sid-b"],
+                        "settings": {"fingerprint": "firefox", "spiderX": "/"},
+                    }
+                },
+            }
+        ],
+        "outbounds": [
+            {
+                "tag": "to-relay",
+                "settings": {
+                    "vnext": [
+                        {
+                            "address": "72.56.109.197",
+                            "port": 9443,
+                            "users": [{"id": "relay-uuid"}],
+                        }
+                    ]
+                },
+            }
+        ],
+    }
+    meta = {"clients": {"client-1": {"name": "alpha", "short_id": "sid-a"}}}
+    frontend_repo = FakeFrontendRepo(config=config, access_log_path=access_log_path)
+    meta_repo = FakeMetaRepo(meta=meta)
+    relay_repo = FakeRelayRepo()
+    service = XrayFrontendService(
+        frontend_repo=frontend_repo,
+        meta_repo=meta_repo,
+        relay_repo=relay_repo,
+        online_window_minutes=5,
+        expected_egress_ip="72.56.109.197",
+        topology_cache_ttl_seconds=10,
+    )
+    return service, frontend_repo, meta_repo, relay_repo
+
+
+def test_list_clients_marks_client_online_when_recent_activity_exists(tmp_path: Path) -> None:
+    service, _, _, _ = build_service(tmp_path)
+    seen_at = datetime.now(timezone.utc).strftime("%Y/%m/%d %H:%M:%S.%f")
+    (tmp_path / "access.log").write_text(
+        f"{seen_at} from 1.2.3.4:12345 accepted tcp:example.com:443 [frontend-in -> to-relay]\n"
+    )
+
+    clients = service.list_clients()
+
+    assert len(clients) == 1
+    assert clients[0].status == "online"
+    assert clients[0].source_ip == "1.2.3.4"
+
+
+def test_create_client_appends_client_and_returns_uri(tmp_path: Path) -> None:
+    service, frontend_repo, meta_repo, _ = build_service(tmp_path)
+
+    result = service.create_client(CreateFrontendClientCommand(name="new-client", host="panel.example.com"))
+
+    assert result.client.name == "new-client"
+    assert result.client.id in result.uri
+    assert "panel.example.com:9444" in result.uri
+    assert len(frontend_repo.config["inbounds"][0]["settings"]["clients"]) == 2
+    assert result.client.id in meta_repo.meta["clients"]
+    assert frontend_repo.restart_calls == 1
+
+
+def test_delete_client_removes_client_from_config_and_meta(tmp_path: Path) -> None:
+    service, frontend_repo, meta_repo, _ = build_service(tmp_path)
+
+    deleted = service.delete_client("client-1")
+
+    assert deleted is True
+    assert frontend_repo.config["inbounds"][0]["settings"]["clients"] == []
+    assert meta_repo.meta["clients"] == {}
+    assert frontend_repo.restart_calls == 1
+
+
+def test_set_client_enabled_sets_false(tmp_path: Path) -> None:
+    service, frontend_repo, _, _ = build_service(tmp_path)
+
+    updated = service.set_client_enabled("client-1", False)
+
+    assert updated is True
+    assert frontend_repo.config["inbounds"][0]["settings"]["clients"][0]["enable"] is False
+    assert frontend_repo.restart_calls == 1
+
+
+def test_set_client_enabled_sets_true(tmp_path: Path) -> None:
+    service, frontend_repo, _, _ = build_service(tmp_path)
+    frontend_repo.config["inbounds"][0]["settings"]["clients"][0]["enable"] = False
+
+    updated = service.set_client_enabled("client-1", True)
+
+    assert updated is True
+    assert frontend_repo.config["inbounds"][0]["settings"]["clients"][0]["enable"] is True
+
+
+def test_update_frontend_config_updates_runtime_config(tmp_path: Path) -> None:
+    service, frontend_repo, _, _ = build_service(tmp_path)
+
+    result = service.update_frontend_config(
+        UpdateFrontendConfigCommand(
+            port=9555,
+            server_name="example.org",
+            fingerprint="chrome",
+            target="example.org:443",
+            spider_x="/health",
+            short_ids=["sid-1", "sid-2"],
+            relay_host="10.0.0.2",
+            relay_port=9556,
+        )
+    )
+
+    assert result.port == 9555
+    assert result.server_name == "example.org"
+    assert result.relay_host == "10.0.0.2"
+    assert frontend_repo.restart_calls == 1
+
+
+def test_update_relay_config_updates_frontend_outbound(tmp_path: Path) -> None:
+    service, frontend_repo, _, _ = build_service(tmp_path)
+
+    result = service.update_relay_config(
+        UpdateRelayConfigCommand(
+            public_host="203.0.113.10",
+            listen_port=9777,
+            relay_uuid="relay-new",
+        )
+    )
+
+    assert result.host == "203.0.113.10"
+    assert result.port == 9777
+    assert result.uuid == "relay-new"
+    assert frontend_repo.restart_calls == 1
+
+
+def test_get_topology_health_uses_cached_value_within_ttl(tmp_path: Path) -> None:
+    service, _, _, relay_repo = build_service(tmp_path)
+
+    first = service.get_topology_health()
+    second = service.get_topology_health()
+
+    assert first.relay_service == "active"
+    assert second.relay_service == "active"
+    assert relay_repo.calls == 2
+
+
+def test_list_clients_marks_client_offline_when_last_seen_is_old(tmp_path: Path) -> None:
+    service, _, meta_repo, _ = build_service(tmp_path)
+    old_seen_at = (datetime.now(timezone.utc) - timedelta(minutes=30)).isoformat().replace("+00:00", "Z")
+    meta_repo.meta["clients"]["client-1"]["last_seen"] = old_seen_at
+
+    clients = service.list_clients()
+
+    assert clients[0].status == "offline"
