@@ -72,3 +72,37 @@
   until: ipsec_addr_check.rc == 0
   changed_when: false
   failed_when: false
+
+- name: Validate strongSwan service is active
+  command: systemctl is-active strongswan-starter
+  register: ipsec_service_status
+  changed_when: false
+  failed_when: ipsec_service_status.stdout.strip() != 'active'
+
+- name: Validate local tunnel IP is configured
+  shell: ip addr show | grep -F '{{ ipsec_local_tunnel_ip }}'
+  changed_when: false
+
+- name: Validate route to remote tunnel IP exists
+  shell: ip route get {{ ipsec_remote_tunnel_ip }}
+  changed_when: false
+
+- name: Validate firewall ruleset tooling is present
+  shell: command -v nft || command -v iptables
+  register: firewall_tool_check
+  changed_when: false
+  failed_when: firewall_tool_check.rc != 0
+
+- name: Validate relay private host matches egress tunnel IP in ipsec mode
+  assert:
+    that:
+      - xray_relay_private_host == xray_ipsec_egress_tunnel_ip
+    fail_msg: "xray_relay_private_host should point at the egress tunnel IP when xray_transport_mode=ipsec"
+  when: "'gateway' in group_names"
+
+- name: Validate relay port is reachable over private tunnel from gateway
+  wait_for:
+    host: "{{ xray_relay_private_host }}"
+    port: "{{ xray_relay_port }}"
+    timeout: 3
+  when: "'gateway' in group_names"

@@ -16,4 +16,10 @@ Baseline Ansible role for a protected gateway↔egress inter-node segment.
 
 ## Notes
 - This role is a starting point, not a fully hardened production IPSec implementation.
-- It currently models a PSK-based IKEv2 tunnel contract and should be extended with policy/firewall/routing validation before production rollout.
+- It currently models a PSK-based IKEv2 tunnel contract and now validates:
+  - `strongswan-starter` service state
+  - local tunnel IP presence
+  - route to remote tunnel IP
+  - firewall tooling presence (`nft` or `iptables`)
+  - relay private endpoint reachability from gateway
+- It should still be extended with explicit policy/firewall management before production rollout.
