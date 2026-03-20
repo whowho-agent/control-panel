@@ -40,17 +40,41 @@ class XrayFrontendService:
         meta = self.meta_repo.read()
         inbound = next(item for item in config["inbounds"] if item.get("tag") == "frontend-in")
         activity = self._parse_activity()
-        latest = max(activity.values(), key=lambda item: item["last_seen_dt"]) if activity else None
         now = datetime.now(timezone.utc)
         clients: list[FrontendClient] = []
-        for index, item in enumerate(inbound["settings"].get("clients", [])):
+        meta_changed = False
+        enabled_client_ids = [
+            item["id"] for item in inbound["settings"].get("clients", []) if item.get("enable", True)
+        ]
+
+        fallback_activity = None
+        if len(enabled_client_ids) == 1 and activity:
+            fallback_activity = max(activity.values(), key=lambda item: item["last_seen_dt"])
+
+        for item in inbound["settings"].get("clients", []):
             client_id = item["id"]
             client_meta = meta.get("clients", {}).get(client_id, {})
             last_seen = client_meta.get("last_seen", "")
             source_ip = client_meta.get("source_ip", "")
-            if not last_seen and index == 0 and latest:
-                last_seen = latest["last_seen"]
-                source_ip = latest["source_ip"]
+            matched_activity = activity.get(source_ip) if source_ip else None
+
+            if matched_activity:
+                last_seen = matched_activity["last_seen"]
+                source_ip = matched_activity["source_ip"]
+                if client_meta.get("last_seen") != last_seen or client_meta.get("source_ip") != source_ip:
+                    meta.setdefault("clients", {}).setdefault(client_id, {}).update(
+                        {"last_seen": last_seen, "source_ip": source_ip}
+                    )
+                    meta_changed = True
+            elif fallback_activity and client_id == enabled_client_ids[0]:
+                last_seen = fallback_activity["last_seen"]
+                source_ip = fallback_activity["source_ip"]
+                if client_meta.get("last_seen") != last_seen or client_meta.get("source_ip") != source_ip:
+                    meta.setdefault("clients", {}).setdefault(client_id, {}).update(
+                        {"last_seen": last_seen, "source_ip": source_ip}
+                    )
+                    meta_changed = True
+
             status = "offline"
             if last_seen:
                 seen_dt = datetime.fromisoformat(last_seen.replace("Z", "+00:00"))
@@ -69,15 +93,22 @@ class XrayFrontendService:
                     enabled=item.get("enable", True),
                 )
             )
+
+        if meta_changed:
+            self.meta_repo.write(meta)
         return clients
 
     def create_client(self, command: CreateFrontendClientCommand) -> FrontendClientUriResult:
         config = self.frontend_repo.read_config()
         frontend = self.frontend_repo.get_frontend_config()
         inbound = next(item for item in config["inbounds"] if item.get("tag") == "frontend-in")
+        reality = inbound["streamSettings"]["realitySettings"]
         client_id = str(uuid.uuid4())
-        short_id = secrets.choice(frontend.short_ids) if frontend.short_ids else ""
-        inbound["settings"].setdefault("clients", []).append({"id": client_id})
+        short_id = self._generate_short_id(frontend.short_ids)
+        reality.setdefault("shortIds", [])
+        if short_id not in reality["shortIds"]:
+            reality["shortIds"].append(short_id)
+        inbound["settings"].setdefault("clients", []).append({"id": client_id, "email": command.name})
         self.frontend_repo.write_config(config)
 
         meta = self.meta_repo.read()
@@ -91,7 +122,8 @@ class XrayFrontendService:
         self.meta_repo.write(meta)
         self.frontend_repo.restart_frontend()
 
-        client = FrontendClient(id=client_id, name=command.name, short_id=short_id)
+        client = FrontendClient(id=client_id, name=command.name, short_id=short_id, email=command.name)
+        frontend.short_ids = reality["shortIds"]
         uri = self.build_client_uri(command.host, client, frontend)
         return FrontendClientUriResult(client=client, uri=uri)
 
@@ -202,8 +234,15 @@ class XrayFrontendService:
             f"{urlencode(query)}#{quote(client.name)}"
         )
 
-    def _parse_activity(self) -> dict:
-        result = {}
+    def _generate_short_id(self, existing_short_ids: list[str]) -> str:
+        existing = set(existing_short_ids)
+        while True:
+            short_id = secrets.token_hex(8)
+            if short_id not in existing:
+                return short_id
+
+    def _parse_activity(self) -> dict[str, dict[str, Any]]:
+        result: dict[str, dict[str, Any]] = {}
         if not self.frontend_repo.access_log_path.exists():
             return result
         line_re = re.compile(

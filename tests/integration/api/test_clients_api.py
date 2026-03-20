@@ -43,7 +43,7 @@ def test_create_client_returns_201_and_uri() -> None:
 
     response = client.post(
         "/api/xray-frontend/clients",
-        auth=("admin", "cfuQXkmySEy7Q0MYN8ruwCs-"),
+        auth=("admin", "change-me"),
         json={"name": "bravo", "host": "panel.example.com"},
     )
 
@@ -59,7 +59,7 @@ def test_delete_client_returns_204() -> None:
 
     response = client.delete(
         "/api/xray-frontend/clients/client-1",
-        auth=("admin", "cfuQXkmySEy7Q0MYN8ruwCs-"),
+        auth=("admin", "change-me"),
     )
 
     assert response.status_code == 204
@@ -72,7 +72,7 @@ def test_enable_client_returns_updated_client() -> None:
 
     response = client.post(
         "/api/xray-frontend/clients/client-1/enable",
-        auth=("admin", "cfuQXkmySEy7Q0MYN8ruwCs-"),
+        auth=("admin", "change-me"),
     )
 
     assert response.status_code == 200
@@ -86,7 +86,7 @@ def test_disable_client_returns_updated_client() -> None:
 
     response = client.post(
         "/api/xray-frontend/clients/client-1/disable",
-        auth=("admin", "cfuQXkmySEy7Q0MYN8ruwCs-"),
+        auth=("admin", "change-me"),
     )
 
     assert response.status_code == 200

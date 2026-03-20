@@ -91,7 +91,7 @@ def build_service(tmp_path: Path) -> tuple[XrayFrontendService, FakeFrontendRepo
                         "privateKey": "priv",
                         "serverNames": ["mitigator.ru"],
                         "target": "mitigator.ru:443",
-                        "shortIds": ["sid-a", "sid-b"],
+                        "shortIds": ["aaaaaaaaaaaaaaaa", "bbbbbbbbbbbbbbbb"],
                         "settings": {"fingerprint": "firefox", "spiderX": "/"},
                     }
                 },
@@ -112,7 +112,7 @@ def build_service(tmp_path: Path) -> tuple[XrayFrontendService, FakeFrontendRepo
             }
         ],
     }
-    meta = {"clients": {"client-1": {"name": "alpha", "short_id": "sid-a"}}}
+    meta = {"clients": {"client-1": {"name": "alpha", "short_id": "aaaaaaaaaaaaaaaa"}}}
     frontend_repo = FakeFrontendRepo(config=config, access_log_path=access_log_path)
     meta_repo = FakeMetaRepo(meta=meta)
     relay_repo = FakeRelayRepo()
@@ -127,8 +127,8 @@ def build_service(tmp_path: Path) -> tuple[XrayFrontendService, FakeFrontendRepo
     return service, frontend_repo, meta_repo, relay_repo
 
 
-def test_list_clients_marks_client_online_when_recent_activity_exists(tmp_path: Path) -> None:
-    service, _, _, _ = build_service(tmp_path)
+def test_list_clients_marks_single_enabled_client_online_when_recent_activity_exists(tmp_path: Path) -> None:
+    service, _, meta_repo, _ = build_service(tmp_path)
     seen_at = datetime.now(timezone.utc).strftime("%Y/%m/%d %H:%M:%S.%f")
     (tmp_path / "access.log").write_text(
         f"{seen_at} from 1.2.3.4:12345 accepted tcp:example.com:443 [frontend-in -> to-relay]\n"
@@ -139,6 +139,20 @@ def test_list_clients_marks_client_online_when_recent_activity_exists(tmp_path: 
     assert len(clients) == 1
     assert clients[0].status == "online"
     assert clients[0].source_ip == "1.2.3.4"
+    assert meta_repo.meta["clients"]["client-1"]["source_ip"] == "1.2.3.4"
+
+
+def test_list_clients_does_not_guess_when_multiple_enabled_clients_exist(tmp_path: Path) -> None:
+    service, frontend_repo, _, _ = build_service(tmp_path)
+    frontend_repo.config["inbounds"][0]["settings"]["clients"].append({"id": "client-2", "enable": True})
+    seen_at = datetime.now(timezone.utc).strftime("%Y/%m/%d %H:%M:%S.%f")
+    (tmp_path / "access.log").write_text(
+        f"{seen_at} from 1.2.3.4:12345 accepted tcp:example.com:443 [frontend-in -> to-relay]\n"
+    )
+
+    clients = service.list_clients()
+
+    assert [client.status for client in clients] == ["offline", "offline"]
 
 
 def test_create_client_appends_client_and_returns_uri(tmp_path: Path) -> None:
@@ -151,7 +165,24 @@ def test_create_client_appends_client_and_returns_uri(tmp_path: Path) -> None:
     assert "panel.example.com:9444" in result.uri
     assert len(frontend_repo.config["inbounds"][0]["settings"]["clients"]) == 2
     assert result.client.id in meta_repo.meta["clients"]
+    assert meta_repo.meta["clients"][result.client.id]["short_id"] == result.client.short_id
+    short_ids = frontend_repo.config["inbounds"][0]["streamSettings"]["realitySettings"]["shortIds"]
+    assert result.client.short_id in short_ids
     assert frontend_repo.restart_calls == 1
+
+
+def test_create_client_generates_unique_short_id(tmp_path: Path) -> None:
+    service, frontend_repo, meta_repo, _ = build_service(tmp_path)
+
+    first = service.create_client(CreateFrontendClientCommand(name="first", host="panel.example.com"))
+    second = service.create_client(CreateFrontendClientCommand(name="second", host="panel.example.com"))
+
+    assert first.client.short_id != second.client.short_id
+    assert len(set(frontend_repo.config["inbounds"][0]["streamSettings"]["realitySettings"]["shortIds"])) == len(
+        frontend_repo.config["inbounds"][0]["streamSettings"]["realitySettings"]["shortIds"]
+    )
+    assert meta_repo.meta["clients"][first.client.id]["short_id"] == first.client.short_id
+    assert meta_repo.meta["clients"][second.client.id]["short_id"] == second.client.short_id
 
 
 def test_delete_client_removes_client_from_config_and_meta(tmp_path: Path) -> None:
@@ -195,7 +226,7 @@ def test_update_frontend_config_updates_runtime_config(tmp_path: Path) -> None:
             fingerprint="chrome",
             target="example.org:443",
             spider_x="/health",
-            short_ids=["sid-1", "sid-2"],
+            short_ids=["cccccccccccccccc", "dddddddddddddddd"],
             relay_host="10.0.0.2",
             relay_port=9556,
         )

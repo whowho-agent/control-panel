@@ -62,7 +62,7 @@ def test_get_frontend_config_returns_runtime_values() -> None:
 
     response = client.get(
         "/api/xray-frontend/config/frontend",
-        auth=("admin", "cfuQXkmySEy7Q0MYN8ruwCs-"),
+        auth=("admin", "change-me"),
     )
 
     assert response.status_code == 200
@@ -77,7 +77,7 @@ def test_update_frontend_config_returns_updated_payload() -> None:
 
     response = client.put(
         "/api/xray-frontend/config/frontend",
-        auth=("admin", "cfuQXkmySEy7Q0MYN8ruwCs-"),
+        auth=("admin", "change-me"),
         json={
             "port": 9555,
             "server_name": "example.org",
@@ -102,7 +102,7 @@ def test_get_relay_config_returns_runtime_values() -> None:
 
     response = client.get(
         "/api/xray-frontend/config/relay",
-        auth=("admin", "cfuQXkmySEy7Q0MYN8ruwCs-"),
+        auth=("admin", "change-me"),
     )
 
     assert response.status_code == 200
@@ -117,7 +117,7 @@ def test_update_relay_config_returns_updated_payload() -> None:
 
     response = client.put(
         "/api/xray-frontend/config/relay",
-        auth=("admin", "cfuQXkmySEy7Q0MYN8ruwCs-"),
+        auth=("admin", "change-me"),
         json={
             "public_host": "203.0.113.5",
             "listen_port": 9777,
