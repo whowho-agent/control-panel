@@ -20,7 +20,7 @@
           "show": false,
           "xver": 0,
           "target": "${XRAY_FRONTEND_TARGET}",
-          "serverNames": ["${XRAY_FRONTEND_SERVER_NAME}"],
+          "serverName": "${XRAY_FRONTEND_SERVER_NAME}",
           "privateKey": "${XRAY_FRONTEND_REALITY_PRIVATE_KEY}",
           "shortIds": [${XRAY_FRONTEND_SHORT_IDS_JSON}],
           "fingerprint": "${XRAY_FRONTEND_FINGERPRINT}",
