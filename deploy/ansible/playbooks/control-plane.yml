@@ -57,6 +57,20 @@
           XRAY_TOPOLOGY_CACHE_TTL_SECONDS=10
           XRAY_RELAY_SSH_KEY_SOURCE={{ xray_relay_ssh_key_source }}
 
+    - name: Install Docker engine and compose plugin
+      apt:
+        name:
+          - docker.io
+          - docker-compose-v2
+        state: present
+        update_cache: true
+
+    - name: Enable and start Docker
+      systemd:
+        name: docker
+        enabled: true
+        state: started
+
     - name: Run control-plane bootstrap
       command: bash {{ project_root }}/deploy/bootstrap/bootstrap-control-plane.sh {{ project_root }}/deploy/env/control-plane.env
 
