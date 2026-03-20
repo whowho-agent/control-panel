@@ -110,8 +110,14 @@ class XrayFrontendService:
         return True
 
     def get_topology_health(self) -> TopologyHealthResult:
+        now = datetime.now(timezone.utc)
+        expires_at = self._topology_cache.get("expires_at")
+        cached_value = self._topology_cache.get("value")
+        if cached_value is not None and expires_at is not None and now < expires_at:
+            return cached_value
+
         clients = self.list_clients()
-        return TopologyHealthResult(
+        result = TopologyHealthResult(
             frontend_service=self.frontend_repo.get_frontend_service_status(),
             relay_service=self.relay_repo.get_remote_service_status(),
             relay_reachable=self.relay_repo.is_port_reachable(),
@@ -119,6 +125,11 @@ class XrayFrontendService:
             client_count=len(clients),
             online_count=sum(1 for item in clients if item.status == "online"),
         )
+        self._topology_cache = {
+            "value": result,
+            "expires_at": now + timedelta(seconds=self.topology_cache_ttl_seconds),
+        }
+        return result
 
     def get_frontend_config(self):
         return self.frontend_repo.get_frontend_config()

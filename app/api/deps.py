@@ -1,5 +1,6 @@
 import os
 import secrets
+from functools import lru_cache
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 
@@ -25,11 +26,13 @@ class Settings:
         self.expected_egress_ip = os.getenv("XRAY_EXPECTED_EGRESS_IP", "72.56.109.197")
         self.admin_user = os.getenv("XRAY_ADMIN_USER", "admin")
         self.admin_password = os.getenv("XRAY_ADMIN_PASSWORD", "cfuQXkmySEy7Q0MYN8ruwCs-")
+        self.topology_cache_ttl_seconds = int(os.getenv("XRAY_TOPOLOGY_CACHE_TTL_SECONDS", "10"))
 
 
 security = HTTPBasic()
 
 
+@lru_cache(maxsize=1)
 def get_settings() -> Settings:
     return Settings()
 
@@ -70,4 +73,5 @@ def get_xray_frontend_service(settings: Settings = Depends(get_settings)) -> Xra
         relay_repo=relay_repo,
         online_window_minutes=settings.online_window_minutes,
         expected_egress_ip=settings.expected_egress_ip,
+        topology_cache_ttl_seconds=settings.topology_cache_ttl_seconds,
     )
