@@ -4,14 +4,22 @@
   changed_when: false
   failed_when: ipsec_service_status.stdout.strip() != 'active'
 
+- name: Validate XFRM interface unit is active
+  command: systemctl is-active ipsec-xfrm.service
+  register: ipsec_xfrm_status
+  changed_when: false
+  failed_when: ipsec_xfrm_status.stdout.strip() != 'active'
+
+- name: Validate local tunnel IP is configured on XFRM interface
+  shell: ip addr show dev {{ ipsec_interface_name }} | grep -F '{{ ipsec_local_tunnel_ip }}'
+  changed_when: false
+
+- name: Validate route to remote tunnel IP exists via XFRM interface
+  shell: ip route get {{ ipsec_remote_tunnel_ip }} | grep -F 'dev {{ ipsec_interface_name }}'
+  changed_when: false
+
 - name: Validate firewall ruleset tooling is present
   shell: command -v nft || command -v iptables
   register: firewall_tool_check
   changed_when: false
   failed_when: firewall_tool_check.rc != 0
-
-- name: Warn that tunnel/IP/route validation is expected to fail until v2 plumbing lands
-  debug:
-    msg: >-
-      Route-based tunnel validation is intentionally deferred until interface creation,
-      route installation, and firewall rules are implemented in ipsec_transport v2.

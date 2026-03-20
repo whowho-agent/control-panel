@@ -1,0 +1,12 @@
+[Unit]
+Description=Route-based IPSec XFRM interface for {{ ipsec_interface_name }}
+After=network-online.target strongswan-starter.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/ipsec-xfrm.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

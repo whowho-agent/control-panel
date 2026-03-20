@@ -10,8 +10,9 @@ Route-based IPSec v2 scaffold for a protected gateway↔egress segment.
 
 ## Current status
 - this role is now structured for IPSec v2 work
+- it now installs an XFRM helper script and systemd unit to create a route-based tunnel interface scaffold
 - it is **not yet a fully working route-based tunnel implementation**
-- XFRM/VTI interface creation, policy routing, and firewall enforcement still need to be implemented
+- policy routing and firewall enforcement still need to be completed
 
 ## Required variables
 - `xray_ipsec_psk`

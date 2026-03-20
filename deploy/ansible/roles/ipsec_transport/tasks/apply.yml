@@ -22,8 +22,8 @@
     enabled: true
     state: started
 
-- name: Warn that XFRM/VTI plumbing is still pending implementation
-  debug:
-    msg: >-
-      ipsec_transport v2 role scaffold is active, but route-based tunnel interface creation,
-      policy routing, and firewall enforcement are not yet implemented in this apply stage.
+- name: Enable and start XFRM interface unit
+  systemd:
+    name: ipsec-xfrm.service
+    enabled: true
+    state: started

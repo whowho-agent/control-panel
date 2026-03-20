@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+IFACE="{{ ipsec_interface_name }}"
+LOCAL_PUBLIC_IP="{{ ipsec_local_public_ip }}"
+REMOTE_PUBLIC_IP="{{ ipsec_remote_public_ip }}"
+LOCAL_TUNNEL_IP="{{ ipsec_local_tunnel_ip }}"
+REMOTE_TUNNEL_IP="{{ ipsec_remote_tunnel_ip }}"
+MARK="{{ ipsec_mark }}"
+
+ip link del "$IFACE" 2>/dev/null || true
+ip link add "$IFACE" type xfrm dev "$(ip route get "$REMOTE_PUBLIC_IP" | awk '/dev/ {print $5; exit}')" if_id "$MARK"
+ip addr flush dev "$IFACE" || true
+ip addr add "$LOCAL_TUNNEL_IP/30" dev "$IFACE"
+ip link set "$IFACE" up
+ip route replace "$REMOTE_TUNNEL_IP/32" dev "$IFACE"

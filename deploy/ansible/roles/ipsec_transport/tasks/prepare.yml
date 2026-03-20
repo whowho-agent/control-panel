@@ -6,13 +6,25 @@
     state: present
     update_cache: true
 
-- name: Ensure route-based interface helper directory exists
-  file:
-    path: /etc/systemd/system/ipsec-xfrm.service.d
-    state: directory
+- name: Install XFRM setup helper script
+  template:
+    src: ipsec-xfrm.sh.j2
+    dest: /usr/local/sbin/ipsec-xfrm.sh
     owner: root
     group: root
     mode: '0755'
+
+- name: Install XFRM systemd unit
+  template:
+    src: ipsec-xfrm.service.j2
+    dest: /etc/systemd/system/ipsec-xfrm.service
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Reload systemd for XFRM unit
+  systemd:
+    daemon_reload: true
 
 - name: Note that rollback should be prepared before live IPSec testing
   debug:
