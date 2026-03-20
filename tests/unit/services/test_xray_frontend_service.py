@@ -142,7 +142,7 @@ def test_list_clients_marks_single_enabled_client_online_when_recent_activity_ex
     assert meta_repo.meta["clients"]["client-1"]["source_ip"] == "1.2.3.4"
 
 
-def test_list_clients_does_not_guess_when_multiple_enabled_clients_exist(tmp_path: Path) -> None:
+def test_list_clients_marks_activity_unattributed_when_multiple_enabled_clients_exist(tmp_path: Path) -> None:
     service, frontend_repo, _, _ = build_service(tmp_path)
     frontend_repo.config["inbounds"][0]["settings"]["clients"].append({"id": "client-2", "enable": True})
     seen_at = datetime.now(timezone.utc).strftime("%Y/%m/%d %H:%M:%S.%f")
@@ -152,7 +152,7 @@ def test_list_clients_does_not_guess_when_multiple_enabled_clients_exist(tmp_pat
 
     clients = service.list_clients()
 
-    assert [client.status for client in clients] == ["offline", "offline"]
+    assert [client.status for client in clients] == ["activity-unattributed", "activity-unattributed"]
 
 
 def test_create_client_appends_client_and_returns_uri(tmp_path: Path) -> None:

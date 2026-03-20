@@ -40,7 +40,7 @@ class FakeUiService:
                 id="client-1",
                 name="test-client",
                 short_id="sid",
-                status="online",
+                status="activity-unattributed",
                 enabled=True,
             )
         ]
@@ -72,6 +72,7 @@ def test_clients_page_renders_with_basic_auth() -> None:
 
     assert response.status_code == 200
     assert "test-client" in response.text
+    assert "activity-unattributed" in response.text
     assert "QR" in response.text
     app.dependency_overrides.clear()
 

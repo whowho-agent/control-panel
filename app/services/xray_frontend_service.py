@@ -80,6 +80,8 @@ class XrayFrontendService:
                 seen_dt = datetime.fromisoformat(last_seen.replace("Z", "+00:00"))
                 if now - seen_dt <= timedelta(minutes=self.online_window_minutes):
                     status = "online"
+            elif activity and item.get("enable", True):
+                status = "activity-unattributed"
             clients.append(
                 FrontendClient(
                     id=client_id,

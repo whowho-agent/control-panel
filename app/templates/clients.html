@@ -16,7 +16,7 @@
     {% for row in rows %}
       <tr>
         <td>{{ row.client.name }}</td>
-        <td><span class="badge {{ 'ok' if row.client.status == 'online' else 'bad' }}">{{ row.client.status }}</span></td>
+        <td><span class="badge {{ 'ok' if row.client.status == 'online' else ('warn' if row.client.status == 'activity-unattributed' else 'bad') }}">{{ row.client.status }}</span></td>
         <td><span class="badge {{ 'ok' if row.client.enabled else 'bad' }}">{{ 'enabled' if row.client.enabled else 'disabled' }}</span></td>
         <td>{{ row.client.last_seen or '-' }}</td>
         <td>{{ row.client.source_ip or '-' }}</td>

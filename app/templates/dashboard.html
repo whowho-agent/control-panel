@@ -32,7 +32,7 @@
       {% for client in clients[:5] %}
         <tr>
           <td>{{ client.name }}</td>
-          <td><span class="badge {{ 'ok' if client.status == 'online' else 'bad' }}">{{ client.status }}</span></td>
+          <td><span class="badge {{ 'ok' if client.status == 'online' else ('warn' if client.status == 'activity-unattributed' else 'bad') }}">{{ client.status }}</span></td>
           <td>{{ client.last_seen or '-' }}</td>
           <td>{{ client.source_ip or '-' }}</td>
         </tr>
