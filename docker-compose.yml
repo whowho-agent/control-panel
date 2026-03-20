@@ -1,0 +1,27 @@
+services:
+  control-plane:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: xray-control-plane
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      XRAY_FRONTEND_CONFIG_PATH: ${XRAY_FRONTEND_CONFIG_PATH:-/data/frontend/config.json}
+      XRAY_FRONTEND_ACCESS_LOG_PATH: ${XRAY_FRONTEND_ACCESS_LOG_PATH:-/data/frontend/access.log}
+      XRAY_FRONTEND_SERVICE_NAME: ${XRAY_FRONTEND_SERVICE_NAME:-xray-frontend}
+      XRAY_BINARY_PATH: ${XRAY_BINARY_PATH:-/data/frontend/xray}
+      XRAY_CLIENT_META_PATH: ${XRAY_CLIENT_META_PATH:-/data/frontend/clients-meta.json}
+      XRAY_RELAY_HOST: ${XRAY_RELAY_HOST:-72.56.109.197}
+      XRAY_RELAY_PORT: ${XRAY_RELAY_PORT:-9443}
+      XRAY_RELAY_SERVICE_NAME: ${XRAY_RELAY_SERVICE_NAME:-xray-relay}
+      XRAY_RELAY_SSH_KEY_PATH: ${XRAY_RELAY_SSH_KEY_PATH:-/run/secrets/relay_ssh_key}
+      XRAY_RELAY_SSH_USER: ${XRAY_RELAY_SSH_USER:-root}
+      XRAY_ONLINE_WINDOW_MINUTES: ${XRAY_ONLINE_WINDOW_MINUTES:-5}
+      XRAY_EXPECTED_EGRESS_IP: ${XRAY_EXPECTED_EGRESS_IP:-72.56.109.197}
+      XRAY_ADMIN_USER: ${XRAY_ADMIN_USER:-admin}
+      XRAY_ADMIN_PASSWORD: ${XRAY_ADMIN_PASSWORD:-change-me}
+    volumes:
+      - ./runtime/frontend:/data/frontend
+      - ./runtime/ssh/relay_ssh_key:/run/secrets/relay_ssh_key:ro

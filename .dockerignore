@@ -1,0 +1,13 @@
+.git
+.gitignore
+keys
+secrets
+memory
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.env
+.env.*
+admin
+.openclaw
