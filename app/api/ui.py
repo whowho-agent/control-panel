@@ -33,6 +33,9 @@ def dashboard(
             "frontend": frontend,
             "clients": clients,
             "online_count": sum(1 for client in clients if client.status == "online"),
+            "gateway_host": request.url.hostname or "localhost",
+            "gateway_label": request.url.hostname or "gateway",
+            "egress_label": frontend.relay_host or "egress",
         },
     )
 

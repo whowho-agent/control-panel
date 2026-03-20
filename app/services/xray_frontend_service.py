@@ -162,7 +162,11 @@ class XrayFrontendService:
         reality = inbound["streamSettings"]["realitySettings"]
         inbound["port"] = command.port
         reality["target"] = command.target
+        reality["dest"] = command.target
         reality["serverNames"] = [command.server_name]
+        reality.pop("serverName", None)
+        reality["fingerprint"] = command.fingerprint
+        reality["spiderX"] = command.spider_x
         reality.setdefault("settings", {})["fingerprint"] = command.fingerprint
         reality.setdefault("settings", {})["spiderX"] = command.spider_x
         reality["shortIds"] = command.short_ids

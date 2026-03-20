@@ -68,7 +68,7 @@ def test_clients_page_renders_with_basic_auth() -> None:
     app.dependency_overrides[get_xray_frontend_service] = lambda: FakeUiService()
     client = TestClient(app)
 
-    response = client.get("/clients", auth=("admin", "cfuQXkmySEy7Q0MYN8ruwCs-"))
+    response = client.get("/clients", auth=("admin", "change-me"))
 
     assert response.status_code == 200
     assert "test-client" in response.text
@@ -80,7 +80,7 @@ def test_config_page_renders_with_basic_auth() -> None:
     app.dependency_overrides[get_xray_frontend_service] = lambda: FakeUiService()
     client = TestClient(app)
 
-    response = client.get("/config", auth=("admin", "cfuQXkmySEy7Q0MYN8ruwCs-"))
+    response = client.get("/config", auth=("admin", "change-me"))
 
     assert response.status_code == 200
     assert "Config Editor" in response.text
@@ -92,7 +92,7 @@ def test_client_qr_returns_png() -> None:
     app.dependency_overrides[get_xray_frontend_service] = lambda: FakeUiService()
     client = TestClient(app)
 
-    response = client.get("/clients/client-1/qr", auth=("admin", "cfuQXkmySEy7Q0MYN8ruwCs-"))
+    response = client.get("/clients/client-1/qr", auth=("admin", "change-me"))
 
     assert response.status_code == 200
     assert response.headers["content-type"] == "image/png"
@@ -105,7 +105,7 @@ def test_update_frontend_config_form_redirects() -> None:
 
     response = client.post(
         "/config/frontend",
-        auth=("admin", "cfuQXkmySEy7Q0MYN8ruwCs-"),
+        auth=("admin", "change-me"),
         data={
             "frontend_port": 9444,
             "frontend_sni": "mitigator.ru",
@@ -130,7 +130,7 @@ def test_update_relay_config_form_redirects() -> None:
 
     response = client.post(
         "/config/relay",
-        auth=("admin", "cfuQXkmySEy7Q0MYN8ruwCs-"),
+        auth=("admin", "change-me"),
         data={
             "relay_public_host": "72.56.109.197",
             "relay_listen_port": 9443,

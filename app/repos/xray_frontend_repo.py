@@ -24,15 +24,17 @@ class XrayFrontendRepo:
         outbound = next(item for item in config["outbounds"] if item.get("tag") == "to-relay")
         reality = inbound["streamSettings"]["realitySettings"]
         relay = outbound["settings"]["vnext"][0]
+        settings = reality.get("settings", {})
+        server_names = reality.get("serverNames") or []
         return FrontendConfigResult(
             port=inbound["port"],
-            server_name=(reality.get("serverNames") or [""])[0],
+            server_name=(server_names[0] if server_names else reality.get("serverName", "")),
             public_key=self.derive_public_key(reality.get("privateKey", "")),
             private_key=reality.get("privateKey", ""),
-            fingerprint=reality.get("settings", {}).get("fingerprint", "firefox"),
+            fingerprint=reality.get("fingerprint", settings.get("fingerprint", "firefox")),
             short_ids=reality.get("shortIds", []),
-            spider_x=reality.get("settings", {}).get("spiderX", "/"),
-            target=reality.get("target", ""),
+            spider_x=reality.get("spiderX", settings.get("spiderX", "/")),
+            target=reality.get("target", reality.get("dest", "")),
             relay_host=relay["address"],
             relay_port=relay["port"],
             relay_uuid=relay["users"][0]["id"],

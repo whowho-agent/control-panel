@@ -30,18 +30,18 @@ class Settings:
             "XRAY_CLIENT_META_PATH",
             "/opt/xray-frontend/clients-meta.json",
         )
-        self.relay_host = os.getenv("XRAY_RELAY_HOST", "72.56.109.197")
+        self.relay_host = os.getenv("XRAY_RELAY_HOST", "relay.example.com")
         self.relay_port = int(os.getenv("XRAY_RELAY_PORT", "9443"))
         self.relay_service_name = os.getenv("XRAY_RELAY_SERVICE_NAME", "xray-relay")
         self.relay_ssh_key_path = os.getenv(
             "XRAY_RELAY_SSH_KEY_PATH",
-            "/root/.openclaw/workspace/keys/rabotyaga_ed25519",
+            "/run/secrets/relay_ssh_key",
         )
-        self.relay_ssh_user = os.getenv("XRAY_RELAY_SSH_USER", "root")
+        self.relay_ssh_user = os.getenv("XRAY_RELAY_SSH_USER", "deploy")
         self.online_window_minutes = int(os.getenv("XRAY_ONLINE_WINDOW_MINUTES", "5"))
-        self.expected_egress_ip = os.getenv("XRAY_EXPECTED_EGRESS_IP", "72.56.109.197")
+        self.expected_egress_ip = os.getenv("XRAY_EXPECTED_EGRESS_IP", "203.0.113.10")
         self.admin_user = os.getenv("XRAY_ADMIN_USER", "admin")
-        self.admin_password = os.getenv("XRAY_ADMIN_PASSWORD", "cfuQXkmySEy7Q0MYN8ruwCs-")
+        self.admin_password = os.getenv("XRAY_ADMIN_PASSWORD", "change-me")
         self.topology_cache_ttl_seconds = int(os.getenv("XRAY_TOPOLOGY_CACHE_TTL_SECONDS", "10"))
 
 

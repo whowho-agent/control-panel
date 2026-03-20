@@ -50,9 +50,9 @@ def test_dashboard_renders_with_basic_auth() -> None:
     app.dependency_overrides[get_xray_frontend_service] = lambda: FakeService()
     client = TestClient(app)
 
-    response = client.get("/", auth=("admin", "cfuQXkmySEy7Q0MYN8ruwCs-"))
+    response = client.get("/", auth=("admin", "change-me"))
 
     assert response.status_code == 200
     assert "Dashboard" in response.text
-    assert "wg-gateway" in response.text
+    assert "testserver" in response.text
     app.dependency_overrides.clear()
