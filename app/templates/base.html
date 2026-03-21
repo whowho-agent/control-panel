@@ -49,6 +49,9 @@
     <div class="flash bad">{{ error_message }}</div>
     {% endif %}
     {% block content %}{% endblock %}
+    <div class="footer">Version: <code>{{ request.app.version }}</code></div>
   </div>
 </body>
+</html>
+
 </html>

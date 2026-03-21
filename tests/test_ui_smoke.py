@@ -56,6 +56,8 @@ def test_dashboard_renders_with_basic_auth() -> None:
 
     assert response.status_code == 200
     assert "Dashboard" in response.text
+    assert "Version:" in response.text
+    assert "0.1.0" in response.text
     assert "72.56.109.197" in response.text
     assert "testserver" in response.text
     assert "Readiness" in response.text
