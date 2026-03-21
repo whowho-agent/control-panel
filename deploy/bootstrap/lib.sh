@@ -39,8 +39,10 @@ require_env_vars() {
 }
 
 wait_for_apt_locks() {
-  local timeout="${1:-$APT_LOCK_WAIT_TIMEOUT}"
-  local interval="${2:-$APT_LOCK_WAIT_INTERVAL}"
+  local timeout="${1:-${APT_LOCK_WAIT_TIMEOUT:-600}}"
+  local interval="${2:-${APT_LOCK_WAIT_INTERVAL:-5}}"
+  [[ -n "$timeout" ]] || timeout=600
+  [[ -n "$interval" ]] || interval=5
   local waited=0
   local -a lock_paths=(
     /var/lib/dpkg/lock-frontend
@@ -98,8 +100,10 @@ install_apt_packages() {
 wait_for_tcp_endpoint() {
   local host="$1"
   local port="$2"
-  local timeout="${3:-$TCP_WAIT_TIMEOUT}"
-  local interval="${4:-$TCP_WAIT_INTERVAL}"
+  local timeout="${3:-${TCP_WAIT_TIMEOUT:-90}}"
+  local interval="${4:-${TCP_WAIT_INTERVAL:-2}}"
+  [[ -n "$timeout" ]] || timeout=90
+  [[ -n "$interval" ]] || interval=2
   local waited=0
 
   while (( waited < timeout )); do
