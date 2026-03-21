@@ -3,12 +3,21 @@ import subprocess
 
 
 class RelayNodeRepo:
-    def __init__(self, host: str, port: int, service_name: str, ssh_key_path: str, ssh_user: str) -> None:
+    def __init__(
+        self,
+        host: str,
+        port: int,
+        service_name: str,
+        ssh_key_path: str,
+        ssh_user: str,
+        ssh_host: str = "",
+    ) -> None:
         self.host = host
         self.port = port
         self.service_name = service_name
         self.ssh_key_path = ssh_key_path
         self.ssh_user = ssh_user
+        self.ssh_host = ssh_host or host
 
     def is_port_reachable(self, timeout: int = 2) -> bool:
         try:
@@ -50,6 +59,6 @@ class RelayNodeRepo:
             "ConnectTimeout=3",
             "-o",
             "StrictHostKeyChecking=accept-new",
-            f"{self.ssh_user}@{self.host}",
+            f"{self.ssh_user}@{self.ssh_host}",
             remote_command,
         ]

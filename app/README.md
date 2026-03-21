@@ -28,7 +28,8 @@ Current scope:
 - frontend access log is read from `XRAY_FRONTEND_ACCESS_LOG_PATH`
 - client metadata is stored in `XRAY_CLIENT_META_PATH`
 - service control is done via `systemctl` or `nsenter ... systemctl` when `XRAY_FRONTEND_USE_NSENTER=1`
-- relay health is checked over SSH using `XRAY_RELAY_*` settings
+- active relay path reachability is checked against `XRAY_RELAY_HOST:XRAY_RELAY_PORT`
+- remote relay service status and synthetic egress probe SSH via `XRAY_RELAY_PUBLIC_HOST` when set, otherwise `XRAY_RELAY_HOST`
 - transport context is driven by `XRAY_TRANSPORT_MODE` plus optional `XRAY_RELAY_PUBLIC_HOST`, `XRAY_RELAY_PRIVATE_HOST`, `XRAY_IPSEC_LOCAL_TUNNEL_IP`, and `XRAY_IPSEC_REMOTE_TUNNEL_IP`
 
 ## Validation and operability guarantees

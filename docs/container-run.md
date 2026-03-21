@@ -44,5 +44,7 @@ make down
 ## Important note
 Current containerized control-plane is designed as a pragmatic bridge stage:
 - it can read/write mounted frontend runtime files
-- it can SSH to `egress-gateway` using mounted key
+- it can probe the active relay path via `XRAY_RELAY_HOST`
+- it can SSH to relay management via `XRAY_RELAY_PUBLIC_HOST` (or `XRAY_RELAY_HOST` if unset) using the mounted key
+- it surfaces direct vs IPSec topology context from `XRAY_TRANSPORT_MODE`, `XRAY_RELAY_PRIVATE_HOST`, and tunnel IP envs
 - it does not yet replace a future node-agent architecture

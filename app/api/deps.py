@@ -89,6 +89,7 @@ def get_xray_frontend_service(settings: Settings = Depends(get_settings)) -> Xra
         service_name=settings.relay_service_name,
         ssh_key_path=settings.relay_ssh_key_path,
         ssh_user=settings.relay_ssh_user,
+        ssh_host=settings.relay_public_host or settings.relay_host,
     )
     return XrayFrontendService(
         frontend_repo=frontend_repo,

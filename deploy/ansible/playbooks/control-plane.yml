@@ -50,6 +50,11 @@
           XRAY_RELAY_SERVICE_NAME=xray-relay
           XRAY_RELAY_SSH_KEY_PATH=/relay_ssh_key
           XRAY_RELAY_SSH_USER={{ xray_relay_ssh_user }}
+          XRAY_TRANSPORT_MODE={{ xray_transport_mode }}
+          XRAY_RELAY_PUBLIC_HOST={{ xray_relay_host }}
+          XRAY_RELAY_PRIVATE_HOST={{ xray_relay_private_host if xray_transport_mode == 'ipsec' else '' }}
+          XRAY_IPSEC_LOCAL_TUNNEL_IP={{ xray_ipsec_gateway_tunnel_ip if xray_transport_mode == 'ipsec' else '' }}
+          XRAY_IPSEC_REMOTE_TUNNEL_IP={{ xray_ipsec_egress_tunnel_ip if xray_transport_mode == 'ipsec' else '' }}
           XRAY_ONLINE_WINDOW_MINUTES=5
           XRAY_EXPECTED_EGRESS_IP={{ xray_expected_egress_ip }}
           XRAY_ADMIN_USER={{ xray_admin_user }}

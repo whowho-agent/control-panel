@@ -28,6 +28,7 @@ ansible-playbook -i deploy/ansible/inventory.ini deploy/ansible/site.yml
   - `ipsec` → `xray_relay_private_host`
 - `playbooks/ipsec.yml` applies role `ipsec_transport` when `xray_transport_mode=ipsec`.
 - `playbooks/control-plane.yml` expects `xray_relay_ssh_private_key_local_path` on the Ansible controller and copies it to `xray_relay_ssh_key_source` on the gateway so control-plane can SSH into egress.
+- In `ipsec` mode the control-plane env keeps both addresses wired: `XRAY_RELAY_HOST`/`XRAY_RELAY_PRIVATE_HOST` point at the active private relay path, while `XRAY_RELAY_PUBLIC_HOST` remains the management/SSH target for service status and synthetic egress probing.
 - The IPSec role now treats `swanctl + charon-systemd` as the primary v2 implementation path and keeps `starter` as explicit fallback.
 - Keep `ipsec_manage_service_cutover=false` for first tests; only enable cutover after transport validation passes on recoverable hosts.
 - Leave `ipsec_validate_external_reachability=true` so the role verifies from the Ansible controller that each host still answers on its public SSH port after apply; add `ipsec_external_reachability_ports` (for example `8000`) when other public control paths must remain reachable too.
