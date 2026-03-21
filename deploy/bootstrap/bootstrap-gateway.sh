@@ -40,7 +40,7 @@ log_phase "gateway readiness checks"
 sudo install -d -m 755 /opt/xray-frontend
 sudo install -d -m 755 "$(dirname "$XRAY_FRONTEND_ACCESS_LOG_PATH")" "$(dirname "$XRAY_FRONTEND_ERROR_LOG_PATH")"
 sudo touch "$XRAY_FRONTEND_ACCESS_LOG_PATH" "$XRAY_FRONTEND_ERROR_LOG_PATH" /opt/xray-frontend/clients-meta.json
-sudo bash -c "$(declare -f wait_for_tcp_endpoint); wait_for_tcp_endpoint '$XRAY_RELAY_HOST' '$XRAY_RELAY_PORT'"
+sudo ROOT_DIR="$ROOT_DIR" TCP_WAIT_TIMEOUT="$TCP_WAIT_TIMEOUT" TCP_WAIT_INTERVAL="$TCP_WAIT_INTERVAL" bash -lc 'source "$ROOT_DIR/deploy/bootstrap/lib.sh"; wait_for_tcp_endpoint "$0" "$1"' "$XRAY_RELAY_HOST" "$XRAY_RELAY_PORT"
 
 log_phase "render and apply gateway config"
 envsubst < "$TEMPLATE" | sudo tee /opt/xray-frontend/config.json >/dev/null

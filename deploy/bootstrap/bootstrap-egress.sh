@@ -42,5 +42,5 @@ EOF
 
 sudo systemctl daemon-reload
 sudo systemctl enable --now xray-relay
-sudo bash -c "$(declare -f wait_for_tcp_endpoint); wait_for_tcp_endpoint 127.0.0.1 '$XRAY_RELAY_PORT'"
+sudo ROOT_DIR="$ROOT_DIR" TCP_WAIT_TIMEOUT="$TCP_WAIT_TIMEOUT" TCP_WAIT_INTERVAL="$TCP_WAIT_INTERVAL" bash -lc 'source "$ROOT_DIR/deploy/bootstrap/lib.sh"; wait_for_tcp_endpoint 127.0.0.1 "$0"' "$XRAY_RELAY_PORT"
 sudo systemctl status xray-relay --no-pager -l | sed -n '1,20p'
