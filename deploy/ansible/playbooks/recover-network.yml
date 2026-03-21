@@ -43,6 +43,15 @@
         executable: /bin/bash
       failed_when: false
 
+    - name: Restart Docker service when present to restore NAT chains
+      shell: |
+        if systemctl list-unit-files | grep -q '^docker\.service'; then
+          systemctl restart docker || true
+        fi
+      args:
+        executable: /bin/bash
+      failed_when: false
+
     - name: Restart SSH service
       shell: systemctl restart ssh || systemctl restart sshd || true
       args:
