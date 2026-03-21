@@ -30,5 +30,7 @@ done
 
 for destination in "${PROTECTED_DESTINATIONS[@]}"; do
   ip route replace "$destination/32" dev "$IFACE" table "$ROUTE_TABLE"
-  ip rule add to "$destination/32" table "$ROUTE_TABLE" priority "$RULE_PRIORITY"
+  if [[ "$destination" != "$REMOTE_TUNNEL_IP" ]]; then
+    ip rule add to "$destination/32" table "$ROUTE_TABLE" priority "$RULE_PRIORITY"
+  fi
 done

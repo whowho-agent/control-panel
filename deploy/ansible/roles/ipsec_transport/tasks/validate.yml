@@ -50,12 +50,12 @@
   register: ipsec_rule_state
   changed_when: false
 
-- name: Validate policy rule for each protected destination exists
+- name: Validate policy rule for each protected destination other than remote tunnel peer
   assert:
     that:
       - ipsec_rule_state.stdout_lines | select('search', 'to ' ~ item) | select('search', 'lookup ' ~ (ipsec_route_table | string)) | list | length > 0 or ipsec_rule_state.stdout_lines | select('search', 'to ' ~ item) | select('search', 'lookup ' ~ ipsec_route_table_name) | list | length > 0
     fail_msg: "Missing narrow policy rule for protected destination {{ item }} into table {{ ipsec_route_table }}"
-  loop: "{{ ipsec_policy_route_destinations }}"
+  loop: "{{ ipsec_policy_route_destinations | reject('equalto', ipsec_remote_tunnel_ip) | list }}"
 
 - name: Validate no generic lookup rule captures all traffic into the IPSec route table
   assert:

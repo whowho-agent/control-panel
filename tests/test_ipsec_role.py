@@ -91,7 +91,7 @@ def test_validation_checks_established_sa_and_endpoint_reachability() -> None:
     assert 'Validate protected endpoint is reachable across the tunnel' in validate
     assert 'Validate route to each protected destination exists in IPSec route table' in validate
     assert 'retries: 5' in validate
-    assert 'Validate policy rule for each protected destination exists' in validate
+    assert 'Validate policy rule for each protected destination other than remote tunnel peer' in validate
     assert 'Validate policy rules do not capture peer public IP' in validate
     assert 'Validate only narrow protected-host routes are installed' in validate
     assert 'Validate controller can still reach host public TCP ports after IPSec apply' in validate
