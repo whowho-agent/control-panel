@@ -20,6 +20,7 @@ Route-based IPSec v2 implementation for a protected gateway↔egress segment.
 - validates service state, interface state, route/rule state, CHILD_SA establishment, and protected endpoint reachability
 - optional service cutover hooks exist but default to **disabled**
 - firewall enforcement and explicit management-path bypass enforcement are still intentionally deferred
+- controller-side post-apply public reachability checks now verify SSH (and any extra declared public TCP ports) still answer on each host public IP
 
 ## Required variables
 - `xray_ipsec_psk`
@@ -31,6 +32,8 @@ Route-based IPSec v2 implementation for a protected gateway↔egress segment.
 - `ipsec_backend` (defaults to `swanctl`; fallback `starter` remains supported)
 - `ipsec_interface_id` (defaults to `ipsec_mark`)
 - `ipsec_manage_service_cutover` (default `false`)
+- `ipsec_validate_external_reachability` (default `true`; controller checks SSH/public ports after apply)
+- `ipsec_external_reachability_ports` (default `[]`; append public ports like `8000` when they must stay reachable)
 - `ipsec_frontend_service_name`
 - `ipsec_control_plane_service_name`
 
@@ -46,9 +49,10 @@ Recommended rollout order:
 3. run `prepare-ipsec-rollback.yml`
 4. run `ipsec.yml`
 5. validate tunnel health from the controller
-6. run `validate-ipsec-app-cutover.yml` in default mode to confirm app-path readiness without assuming cutover
-7. only then opt into private app-path cutover if desired
-8. re-run `validate-ipsec-app-cutover.yml -e ipsec_expect_private_app_path=true` to confirm the controlled cutover state
+6. let the role's controller-side validation confirm each host still answers on public SSH (plus any declared extra public TCP ports)
+7. run `validate-ipsec-app-cutover.yml` in default mode to confirm app-path readiness without assuming cutover
+8. only then opt into private app-path cutover if desired
+9. re-run `validate-ipsec-app-cutover.yml -e ipsec_expect_private_app_path=true` to confirm the controlled cutover state
 
 Rollback safety is preserved by keeping:
 - direct-mode baseline unchanged

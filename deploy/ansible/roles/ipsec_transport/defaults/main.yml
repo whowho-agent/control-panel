@@ -19,6 +19,10 @@ ipsec_route_table: 221
 ipsec_route_table_name: xray_ipsec
 ipsec_interface_name: xfrm0
 ipsec_firewall_manage: false
+ipsec_validate_external_reachability: true
+ipsec_external_reachability_timeout: 10
+ipsec_external_reachability_delay: 2
+ipsec_external_reachability_ports: []
 ipsec_management_bypass_tcp_ports:
   - 22
 ipsec_management_bypass_udp_ports:

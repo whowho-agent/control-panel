@@ -90,3 +90,8 @@
   debug:
     msg: "Manual precheck required: confirm fresh provider snapshot/restore point before live IPSec rollout"
   when: ipsec_precheck_require_snapshot | bool
+
+- name: Warn when external reachability validation is disabled
+  debug:
+    msg: "Controller-side external reachability validation is disabled; SSH/public-path preservation will not be auto-checked after IPSec apply"
+  when: not (ipsec_validate_external_reachability | bool)

@@ -15,6 +15,8 @@ def test_ipsec_role_defaults_keep_service_cutover_disabled() -> None:
     assert 'swanctl: strongswan' in defaults
     assert 'starter: strongswan-starter' in defaults
     assert 'ipsec_install_policy: false' in defaults
+    assert 'ipsec_validate_external_reachability: true' in defaults
+    assert 'ipsec_external_reachability_ports: []' in defaults
     assert 'ipsec_management_bypass_udp_ports:' in defaults
     assert 'ipsec_management_bypass_ip_protocols:' in defaults
 
@@ -78,6 +80,7 @@ def test_precheck_enforces_supported_backends_and_narrow_protected_routes() -> N
     assert 'ipsec_validation_host' in precheck
     assert 'Assert protected hosts stay narrow and never include public peer or default route' in precheck
     assert 'ipsec_protected_hosts must not include empty values' in precheck
+    assert 'Warn when external reachability validation is disabled' in precheck
 
 
 
@@ -91,6 +94,9 @@ def test_validation_checks_established_sa_and_endpoint_reachability() -> None:
     assert 'Validate policy rule for each protected destination exists' in validate
     assert 'Validate policy rules do not capture peer public IP' in validate
     assert 'Validate only narrow protected-host routes are installed' in validate
+    assert 'Validate controller can still reach host public TCP ports after IPSec apply' in validate
+    assert 'delegate_to: localhost' in validate
+    assert 'ipsec_external_reachability_targets' in validate
     assert "ipsec_backend == 'starter'" in validate
     assert 'Collect backend-specific SA status output' in validate
     assert 'ipsec_status_command' in validate
@@ -116,7 +122,7 @@ def test_app_cutover_validation_playbook_checks_live_runtime_and_control_plane()
 
     assert 'ipsec_expect_private_app_path: false' in validate_app
     assert 'Validate live frontend runtime config points to the expected relay host' in validate_app
-    assert 'tag\' == \'to-relay\'' in validate_app
+    assert "item.get('tag') == 'to-relay'" in validate_app
     assert '/api/xray-frontend/config/frontend' in validate_app
     assert '/api/xray-frontend/topology-health' in validate_app
     assert 'egress_probe_ok' in validate_app

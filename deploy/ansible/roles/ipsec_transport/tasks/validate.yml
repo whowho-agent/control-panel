@@ -100,6 +100,24 @@
   changed_when: false
   failed_when: firewall_tool_check.rc != 0
 
+- name: Derive controller-side external reachability targets
+  set_fact:
+    ipsec_external_reachability_targets: >-
+      {{ ([hostvars[inventory_hostname].ansible_port | default(22) | int] + (ipsec_external_reachability_ports | default([]))) | unique }}
+  when: ipsec_validate_external_reachability | bool
+
+- name: Validate controller can still reach host public TCP ports after IPSec apply
+  wait_for:
+    host: "{{ hostvars[inventory_hostname].ansible_host }}"
+    port: "{{ item }}"
+    timeout: "{{ ipsec_external_reachability_timeout }}"
+    delay: "{{ ipsec_external_reachability_delay }}"
+    state: started
+  delegate_to: localhost
+  become: false
+  loop: "{{ ipsec_external_reachability_targets }}"
+  when: ipsec_validate_external_reachability | bool
+
 - name: Report whether service cutover is enabled
   debug:
     msg: >-
