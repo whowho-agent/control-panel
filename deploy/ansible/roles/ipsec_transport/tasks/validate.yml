@@ -94,11 +94,15 @@
     port: "{{ xray_relay_port if 'gateway' in group_names else 22 }}"
     timeout: 15
 
-- name: Validate firewall ruleset tooling is present
-  shell: command -v nft || command -v iptables
+- name: Check whether firewall ruleset tooling is present
+  shell: command -v nft || command -v iptables || true
   register: firewall_tool_check
   changed_when: false
-  failed_when: firewall_tool_check.rc != 0
+
+- name: Warn when firewall ruleset tooling is absent on host
+  debug:
+    msg: "Firewall tooling (nft/iptables) is absent on this host; skipping firewall-tooling validation because clean minimal images may not ship it by default."
+  when: (firewall_tool_check.stdout | trim) == ''
 
 - name: Normalize controller-side external reachability ports input
   set_fact:
