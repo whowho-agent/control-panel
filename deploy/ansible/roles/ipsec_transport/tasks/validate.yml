@@ -112,10 +112,16 @@
       }}
   when: ipsec_validate_external_reachability | bool
 
+- name: Derive host-specific supplemental public reachability ports
+  set_fact:
+    ipsec_external_reachability_ports_effective: >-
+      {{ (ipsec_external_reachability_ports_normalized | default([])) if ('gateway' in group_names) else [] }}
+  when: ipsec_validate_external_reachability | bool
+
 - name: Derive controller-side external reachability targets
   set_fact:
     ipsec_external_reachability_targets: >-
-      {{ ([hostvars[inventory_hostname].ansible_port | default(22) | int] + (ipsec_external_reachability_ports_normalized | default([]))) | map('int') | unique }}
+      {{ ([hostvars[inventory_hostname].ansible_port | default(22) | int] + (ipsec_external_reachability_ports_effective | default([]))) | map('int') | unique }}
   when: ipsec_validate_external_reachability | bool
 
 - name: Validate controller can still reach host public TCP ports after IPSec apply
