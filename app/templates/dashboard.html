@@ -5,17 +5,30 @@
   <div class="card" style="grid-column:span 3"><div class="small">Clients</div><div class="kpi">{{ topology.client_count }}</div></div>
   <div class="card" style="grid-column:span 3"><div class="small">Online now</div><div class="kpi">{{ online_count }}</div></div>
   <div class="card" style="grid-column:span 3"><div class="small">Health</div><div class="kpi">{{ topology.frontend_service }}</div></div>
-  <div class="card" style="grid-column:span 3"><div class="small">Readiness</div><div class="kpi">{{ topology.frontend_readiness_status }}</div></div>
+  <div class="card" style="grid-column:span 3"><div class="small">Transport</div><div class="kpi">{{ topology.transport_mode }}</div></div>
   <div class="card" style="grid-column:span 12">
     <h2 style="margin-top:0">Topology</h2>
     <div class="topology">
       <div class="node"><div class="small">Client Edge</div><div class="kpi">Internet Clients</div><div><span class="badge ok">traffic present</span></div></div>
       <div class="arrow">→</div>
       <div class="node"><div class="small">Gateway Node</div><div class="kpi">{{ gateway_label }}</div><div>Health: <span class="badge {{ 'ok' if topology.frontend_service in ['active', 'configured'] else 'bad' }}">{{ topology.frontend_service }}</span></div><div>Readiness: <span class="badge {{ 'ok' if topology.frontend_ready else 'bad' }}">{{ topology.frontend_readiness_status }}</span></div><div class="small">Entry {{ gateway_host }}:{{ frontend.port }}</div></div>
-      <div class="arrow">→</div>
+      <div class="arrow">{{ '⇢ IPSec ⇢' if topology.ipsec_expected else '→' }}</div>
       <div class="node"><div class="small">Egress Node</div><div class="kpi">{{ egress_label }}</div><div>Relay: <span class="badge {{ 'ok' if topology.relay_reachable else 'bad' }}">{{ 'reachable' if topology.relay_reachable else 'unreachable' }}</span></div><div class="small">Expected egress {{ topology.expected_egress_ip }}</div></div>
     </div>
     <div class="small" style="margin-top:10px;">Health means the control-plane process answered. Readiness means the managed frontend service is actually active and able to serve traffic.</div>
+  </div>
+  <div class="card" style="grid-column:span 6">
+    <h2 style="margin-top:0">Transport path</h2>
+    <div>Mode: <span class="badge {{ 'ok' if topology.ipsec_active or not topology.ipsec_expected else 'warn' }}">{{ topology.transport_label }}</span></div>
+    <div>Active relay target: <code>{{ topology.active_relay_host }}:{{ topology.active_relay_port }}</code></div>
+    <div>Public relay host: <code>{{ topology.relay_public_host or '-' }}</code></div>
+    <div>Private relay host: <code>{{ topology.relay_private_host or '-' }}</code></div>
+    {% if topology.ipsec_expected %}
+    <div>IPSec status: <span class="badge {{ 'ok' if topology.ipsec_active else 'warn' }}">{{ 'private path active' if topology.ipsec_active else 'configured, no private cutover yet' }}</span></div>
+    <div>Tunnel: <code>{{ topology.ipsec_local_tunnel_ip or '-' }}</code> → <code>{{ topology.ipsec_remote_tunnel_ip or '-' }}</code></div>
+    {% else %}
+    <div>Path: <span class="badge ok">public direct relay</span></div>
+    {% endif %}
   </div>
   <div class="card" style="grid-column:span 6">
     <h2 style="margin-top:0">Frontend config</h2>

@@ -5,6 +5,18 @@
   <div><strong>Safe apply workflow</strong></div>
   <div class="small" style="margin-top:6px;">Validate candidate config first. Save performs preflight validation, then restart, then readiness check. If restart fails, control-plane attempts rollback to the previous config.</div>
 </div>
+<div class="card" style="margin-bottom:16px;">
+  <div><strong>Transport mode</strong></div>
+  <div class="small" style="margin-top:6px;">
+    Mode <code>{{ topology.transport_mode }}</code> — {{ topology.transport_label }}.
+    Active relay target <code>{{ topology.active_relay_host }}:{{ topology.active_relay_port }}</code>.
+    {% if topology.ipsec_expected %}
+      Expected private relay <code>{{ topology.relay_private_host or '-' }}</code>, tunnel <code>{{ topology.ipsec_local_tunnel_ip or '-' }}</code> → <code>{{ topology.ipsec_remote_tunnel_ip or '-' }}</code>.
+    {% else %}
+      Public relay <code>{{ topology.relay_public_host or '-' }}</code> is the canonical path.
+    {% endif %}
+  </div>
+</div>
 <div class="grid">
   <div class="card" style="grid-column:span 7;">
     <h2 style="margin-top:0">Frontend config</h2>
@@ -22,6 +34,13 @@
         <div><label>Relay host</label><input name="relay_host" value="{{ frontend.relay_host }}" /></div>
         <div><label>Relay port</label><input name="relay_port" value="{{ frontend.relay_port }}" /></div>
       </div>
+      <div class="small" style="margin-top:8px;">
+        {% if topology.ipsec_expected %}
+          In IPSec mode this should normally point at the private relay host <code>{{ topology.relay_private_host or '-' }}</code> after transport validation and cutover.
+        {% else %}
+          In direct mode this should point at the public relay host <code>{{ topology.relay_public_host or '-' }}</code>.
+        {% endif %}
+      </div>
       <div style="margin-top:12px;">
         <label>Short IDs (comma separated)</label>
         <input name="frontend_shortids" value="{{ frontend.short_ids | join(',') }}" />
@@ -38,6 +57,7 @@
       <div><label>Relay host</label><input name="relay_public_host" value="{{ relay.host }}" /></div>
       <div style="margin-top:12px;"><label>Relay port</label><input name="relay_listen_port" value="{{ relay.port }}" /></div>
       <div style="margin-top:12px;"><label>Relay UUID</label><input name="relay_uuid" value="{{ relay.uuid }}" /></div>
+      <div class="small" style="margin-top:8px;">This edits the frontend outbound target. Keep public host for direct mode; switch intentionally to private host only after IPSec transport validation is green.</div>
       <div style="margin-top:16px;display:flex;gap:12px;">
         <button type="submit" formaction="/config/relay/validate">Validate only</button>
         <button type="submit">Validate + save + restart</button>

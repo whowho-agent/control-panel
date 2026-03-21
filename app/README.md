@@ -13,6 +13,7 @@ Current scope:
 - clients UI via FastAPI templates
 - list/create/delete/enable/disable frontend clients
 - topology health with synthetic egress probe
+- transport-aware topology state for direct vs IPSec relay paths
 - frontend config API/UI
 - relay config API/UI
 - live runtime config writes + service restart path
@@ -28,6 +29,7 @@ Current scope:
 - client metadata is stored in `XRAY_CLIENT_META_PATH`
 - service control is done via `systemctl` or `nsenter ... systemctl` when `XRAY_FRONTEND_USE_NSENTER=1`
 - relay health is checked over SSH using `XRAY_RELAY_*` settings
+- transport context is driven by `XRAY_TRANSPORT_MODE` plus optional `XRAY_RELAY_PUBLIC_HOST`, `XRAY_RELAY_PRIVATE_HOST`, `XRAY_IPSEC_LOCAL_TUNNEL_IP`, and `XRAY_IPSEC_REMOTE_TUNNEL_IP`
 
 ## Validation and operability guarantees
 

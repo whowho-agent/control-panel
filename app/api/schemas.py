@@ -65,6 +65,16 @@ class TopologyHealthOutput(BaseModel):
     observed_egress_ip: str = ""
     frontend_ready: bool = False
     frontend_readiness_status: str = "unknown"
+    transport_mode: str = "direct"
+    transport_label: str = "Direct public relay"
+    relay_public_host: str = ""
+    relay_private_host: str = ""
+    active_relay_host: str = ""
+    active_relay_port: int = 0
+    ipsec_expected: bool = False
+    ipsec_active: bool = False
+    ipsec_local_tunnel_ip: str = ""
+    ipsec_remote_tunnel_ip: str = ""
 
 
 class FrontendConfigOutput(BaseModel):

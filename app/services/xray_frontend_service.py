@@ -27,6 +27,11 @@ class XrayFrontendService:
         online_window_minutes: int,
         expected_egress_ip: str,
         topology_cache_ttl_seconds: int,
+        transport_mode: str = "direct",
+        relay_public_host: str = "",
+        relay_private_host: str = "",
+        ipsec_local_tunnel_ip: str = "",
+        ipsec_remote_tunnel_ip: str = "",
     ) -> None:
         self.frontend_repo = frontend_repo
         self.meta_repo = meta_repo
@@ -34,6 +39,11 @@ class XrayFrontendService:
         self.online_window_minutes = online_window_minutes
         self.expected_egress_ip = expected_egress_ip
         self.topology_cache_ttl_seconds = topology_cache_ttl_seconds
+        self.transport_mode = (transport_mode or "direct").strip().lower()
+        self.relay_public_host = relay_public_host
+        self.relay_private_host = relay_private_host
+        self.ipsec_local_tunnel_ip = ipsec_local_tunnel_ip
+        self.ipsec_remote_tunnel_ip = ipsec_remote_tunnel_ip
         self._topology_cache: dict[str, Any] = {"value": None, "expires_at": None}
 
     def list_clients(self) -> list[FrontendClient]:
@@ -200,12 +210,22 @@ class XrayFrontendService:
             return cached_value
 
         clients = self.list_clients()
+        frontend = self.frontend_repo.get_frontend_config()
         observed_egress_ip = self.relay_repo.probe_observed_public_ip()
         readiness = self.frontend_repo.get_frontend_readiness()
+        ipsec_expected = self.transport_mode == "ipsec"
+        active_relay_host = frontend.relay_host
+        ipsec_active = bool(
+            ipsec_expected
+            and self.relay_private_host
+            and active_relay_host == self.relay_private_host
+            and self.relay_repo.is_port_reachable()
+        )
+        relay_reachable = self.relay_repo.is_port_reachable()
         result = TopologyHealthResult(
             frontend_service=self.frontend_repo.get_frontend_service_status(),
             relay_service=self.relay_repo.get_remote_service_status(),
-            relay_reachable=self.relay_repo.is_port_reachable(),
+            relay_reachable=relay_reachable,
             expected_egress_ip=self.expected_egress_ip,
             client_count=len(clients),
             online_count=sum(1 for item in clients if item.status == "online"),
@@ -213,6 +233,16 @@ class XrayFrontendService:
             observed_egress_ip=observed_egress_ip,
             frontend_ready=readiness.ready,
             frontend_readiness_status=readiness.status,
+            transport_mode=self.transport_mode,
+            transport_label=self._transport_label(ipsec_expected, ipsec_active),
+            relay_public_host=self.relay_public_host,
+            relay_private_host=self.relay_private_host,
+            active_relay_host=active_relay_host,
+            active_relay_port=frontend.relay_port,
+            ipsec_expected=ipsec_expected,
+            ipsec_active=ipsec_active,
+            ipsec_local_tunnel_ip=self.ipsec_local_tunnel_ip,
+            ipsec_remote_tunnel_ip=self.ipsec_remote_tunnel_ip,
         )
         self._topology_cache = {
             "value": result,
@@ -305,6 +335,13 @@ class XrayFrontendService:
             short_id = secrets.token_hex(8)
             if short_id not in existing:
                 return short_id
+
+    def _transport_label(self, ipsec_expected: bool, ipsec_active: bool) -> str:
+        if not ipsec_expected:
+            return "Direct public relay"
+        if ipsec_active:
+            return "IPSec private relay"
+        return "IPSec configured, waiting for private cutover"
 
     def _parse_activity(self) -> dict[str, dict[str, Any]]:
         result: dict[str, dict[str, Any]] = {}

@@ -63,7 +63,7 @@ def dashboard(
             "online_count": sum(1 for client in clients if client.status == "online"),
             "gateway_host": request.url.hostname or "localhost",
             "gateway_label": request.url.hostname or "gateway",
-            "egress_label": frontend.relay_host or "egress",
+            "egress_label": topology.active_relay_host or frontend.relay_host or "egress",
             "success_message": _humanize_message(_query_message(request, "success")),
             "error_message": _humanize_message(_query_message(request, "error")),
         },
@@ -181,12 +181,14 @@ def config_page(
 ) -> HTMLResponse:
     frontend = service.get_frontend_config()
     relay = service.get_relay_config()
+    topology = service.get_topology_health()
     return templates.TemplateResponse(
         request,
         "config.html",
         {
             "frontend": frontend,
             "relay": relay,
+            "topology": topology,
             "success_message": _humanize_message(_query_message(request, "success")),
             "error_message": _humanize_message(_query_message(request, "error")),
         },

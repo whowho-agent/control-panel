@@ -41,6 +41,7 @@
       <a href="/">Dashboard</a>
       <a href="/clients">Clients</a>
       <a href="/config">Config</a>
+      <div class="small" style="margin-left:auto;align-self:center;">Version: {{ request.app.version }}</div>
     </div>
     {% if success_message %}
     <div class="flash ok">{{ success_message }}</div>

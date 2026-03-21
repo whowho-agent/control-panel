@@ -44,6 +44,11 @@ class Settings:
         self.admin_user = os.getenv("XRAY_ADMIN_USER", "admin")
         self.admin_password = os.getenv("XRAY_ADMIN_PASSWORD", "change-me")
         self.topology_cache_ttl_seconds = int(os.getenv("XRAY_TOPOLOGY_CACHE_TTL_SECONDS", "10"))
+        self.transport_mode = os.getenv("XRAY_TRANSPORT_MODE", "direct").strip().lower() or "direct"
+        self.relay_public_host = os.getenv("XRAY_RELAY_PUBLIC_HOST", self.relay_host)
+        self.relay_private_host = os.getenv("XRAY_RELAY_PRIVATE_HOST", "")
+        self.ipsec_local_tunnel_ip = os.getenv("XRAY_IPSEC_LOCAL_TUNNEL_IP", "")
+        self.ipsec_remote_tunnel_ip = os.getenv("XRAY_IPSEC_REMOTE_TUNNEL_IP", "")
 
 
 security = HTTPBasic()
@@ -92,4 +97,9 @@ def get_xray_frontend_service(settings: Settings = Depends(get_settings)) -> Xra
         online_window_minutes=settings.online_window_minutes,
         expected_egress_ip=settings.expected_egress_ip,
         topology_cache_ttl_seconds=settings.topology_cache_ttl_seconds,
+        transport_mode=settings.transport_mode,
+        relay_public_host=settings.relay_public_host,
+        relay_private_host=settings.relay_private_host,
+        ipsec_local_tunnel_ip=settings.ipsec_local_tunnel_ip,
+        ipsec_remote_tunnel_ip=settings.ipsec_remote_tunnel_ip,
     )

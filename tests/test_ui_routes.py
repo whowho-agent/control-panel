@@ -155,3 +155,62 @@ def test_update_relay_config_form_redirects() -> None:
     assert response.status_code == 303
     assert response.headers["location"] == "/config?success=relay_config_saved"
     app.dependency_overrides.clear()
+
+
+def test_dashboard_and_config_show_ipsec_transport_context() -> None:
+    class FakeIpsecUiService(FakeUiService):
+        def get_topology_health(self):
+            return TopologyHealthResult(
+                frontend_service="configured",
+                relay_service="active",
+                relay_reachable=True,
+                expected_egress_ip="72.56.109.197",
+                client_count=1,
+                online_count=1,
+                egress_probe_ok=True,
+                observed_egress_ip="72.56.109.197",
+                frontend_ready=True,
+                frontend_readiness_status="ready",
+                transport_mode="ipsec",
+                transport_label="IPSec private relay",
+                relay_public_host="72.56.109.197",
+                relay_private_host="10.10.10.2",
+                active_relay_host="10.10.10.2",
+                active_relay_port=9443,
+                ipsec_expected=True,
+                ipsec_active=True,
+                ipsec_local_tunnel_ip="10.10.10.1",
+                ipsec_remote_tunnel_ip="10.10.10.2",
+            )
+
+        def get_frontend_config(self):
+            return FrontendConfigResult(
+                port=9444,
+                server_name="mitigator.ru",
+                public_key="pub",
+                private_key="priv",
+                fingerprint="firefox",
+                short_ids=["sid"],
+                spider_x="/",
+                target="mitigator.ru:443",
+                relay_host="10.10.10.2",
+                relay_port=9443,
+                relay_uuid="uuid",
+            )
+
+        def get_relay_config(self):
+            return RelayConfigResult(host="10.10.10.2", port=9443, uuid="uuid")
+
+    app.dependency_overrides[get_xray_frontend_service] = lambda: FakeIpsecUiService()
+    client = TestClient(app)
+
+    dashboard = client.get("/", auth=("admin", "change-me"))
+    config = client.get("/config", auth=("admin", "change-me"))
+
+    assert dashboard.status_code == 200
+    assert "IPSec private relay" in dashboard.text
+    assert "10.10.10.1" in dashboard.text
+    assert config.status_code == 200
+    assert "Expected private relay" in config.text
+    assert "10.10.10.2" in config.text
+    app.dependency_overrides.clear()

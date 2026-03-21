@@ -140,6 +140,11 @@ def build_service(tmp_path: Path) -> tuple[XrayFrontendService, FakeFrontendRepo
         online_window_minutes=5,
         expected_egress_ip="72.56.109.197",
         topology_cache_ttl_seconds=10,
+        transport_mode="direct",
+        relay_public_host="72.56.109.197",
+        relay_private_host="10.10.10.2",
+        ipsec_local_tunnel_ip="10.10.10.1",
+        ipsec_remote_tunnel_ip="10.10.10.2",
     )
     return service, frontend_repo, meta_repo, relay_repo
 
@@ -328,8 +333,31 @@ def test_get_topology_health_uses_cached_value_within_ttl(tmp_path: Path) -> Non
     assert first.egress_probe_ok is True
     assert first.observed_egress_ip == "72.56.109.197"
     assert first.frontend_ready is True
+    assert first.transport_mode == "direct"
+    assert first.transport_label == "Direct public relay"
+    assert first.active_relay_host == "72.56.109.197"
+    assert first.ipsec_active is False
     assert second.relay_service == "active"
     assert relay_repo.calls == 3
+
+
+def test_get_topology_health_marks_ipsec_active_after_private_cutover(tmp_path: Path) -> None:
+    service, frontend_repo, _, relay_repo = build_service(tmp_path)
+    service.transport_mode = "ipsec"
+    frontend_repo.config["outbounds"][0]["settings"]["vnext"][0]["address"] = "10.10.10.2"
+    relay_repo.observed_ip = "72.56.109.197"
+
+    result = service.get_topology_health()
+
+    assert result.transport_mode == "ipsec"
+    assert result.transport_label == "IPSec private relay"
+    assert result.ipsec_expected is True
+    assert result.ipsec_active is True
+    assert result.active_relay_host == "10.10.10.2"
+    assert result.relay_private_host == "10.10.10.2"
+    assert result.ipsec_local_tunnel_ip == "10.10.10.1"
+    assert result.ipsec_remote_tunnel_ip == "10.10.10.2"
+    assert relay_repo.calls == 4
 
 
 def test_list_clients_marks_client_offline_when_last_seen_is_old(tmp_path: Path) -> None:
