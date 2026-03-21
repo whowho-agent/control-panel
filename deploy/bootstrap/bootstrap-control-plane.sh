@@ -17,8 +17,12 @@ if ! command -v docker >/dev/null 2>&1; then
   exit 1
 fi
 
-apt-get update >/dev/null
-apt-get install -y docker-compose-v2 >/dev/null || apt-get install -y docker-compose-plugin >/dev/null || true
+wait_for_apt_locks
+apt_get_safe update >/dev/null
+apt_get_safe install -y docker-compose-v2 >/dev/null || apt_get_safe install -y docker-compose-plugin >/dev/null || true
+if [[ -n "${XRAY_RELAY_HOST:-}" && -n "${XRAY_RELAY_PORT:-}" ]]; then
+  wait_for_tcp_endpoint "$XRAY_RELAY_HOST" "$XRAY_RELAY_PORT"
+fi
 mkdir -p "$TARGET_DIR"
 find "$TARGET_DIR" -mindepth 1 -maxdepth 1 \
   ! -name runtime \

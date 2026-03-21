@@ -70,8 +70,21 @@
   wait_for:
     host: "{{ ipsec_validation_host }}"
     port: "{{ xray_relay_port if 'gateway' in group_names else 22 }}"
-    timeout: 15
+    timeout: 90
+    delay: 2
+    state: started
   when: ipsec_validation_host is defined
+
+- name: Re-confirm private relay endpoint answers from gateway before service cutover
+  wait_for:
+    host: "{{ xray_relay_private_host }}"
+    port: "{{ xray_relay_port }}"
+    timeout: 90
+    delay: 2
+    state: started
+  when:
+    - ipsec_manage_service_cutover | bool
+    - "'gateway' in group_names"
 
 - name: Optionally restart frontend service on gateway after transport comes up
   systemd:

@@ -40,6 +40,13 @@
           XRAY_RELAY_PORT={{ xray_relay_port }}
           XRAY_RELAY_UUID={{ xray_relay_uuid }}
 
+    - name: Wait for configured relay endpoint to become reachable before gateway bootstrap
+      wait_for:
+        host: "{{ xray_relay_private_host if xray_transport_mode == 'ipsec' else xray_relay_host }}"
+        port: "{{ xray_relay_port }}"
+        timeout: 90
+      when: (xray_relay_private_host if xray_transport_mode == 'ipsec' else xray_relay_host) | length > 0
+
     - name: Run gateway bootstrap
       command: bash {{ project_root }}/deploy/bootstrap/bootstrap-gateway.sh {{ project_root }}/deploy/env/gateway.env
 

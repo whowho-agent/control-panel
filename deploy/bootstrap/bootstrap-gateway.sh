@@ -31,14 +31,19 @@ print(', '.join(json.dumps(item.strip()) for item in os.environ['XRAY_FRONTEND_S
 PY
 )"
 
-sudo apt-get update >/dev/null
-sudo apt-get install -y qrencode curl gettext-base >/dev/null
+sudo bash -c "$(declare -f wait_for_apt_locks); $(declare -f apt_get_safe); wait_for_apt_locks"
+sudo bash -c "$(declare -f wait_for_apt_locks); $(declare -f apt_get_safe); apt_get_safe update >/dev/null"
+sudo bash -c "$(declare -f wait_for_apt_locks); $(declare -f apt_get_safe); apt_get_safe install -y qrencode curl gettext-base >/dev/null"
 if [[ ! -x /opt/xray-frontend/xray ]]; then
-  sudo bash -c "$(declare -f install_xray_binary); install_xray_binary /opt/xray-frontend"
+  sudo bash -c "$(declare -f wait_for_apt_locks); $(declare -f apt_get_safe); $(declare -f install_xray_binary); install_xray_binary /opt/xray-frontend"
 fi
 sudo chmod 755 /opt/xray-frontend/xray
 
 sudo install -d -m 755 /opt/xray-frontend
+sudo install -d -m 755 "$(dirname "$XRAY_FRONTEND_ACCESS_LOG_PATH")" "$(dirname "$XRAY_FRONTEND_ERROR_LOG_PATH")"
+if [[ -n "${XRAY_RELAY_HOST:-}" && -n "${XRAY_RELAY_PORT:-}" ]]; then
+  sudo bash -c "$(declare -f wait_for_tcp_endpoint); wait_for_tcp_endpoint '$XRAY_RELAY_HOST' '$XRAY_RELAY_PORT'"
+fi
 envsubst < "$TEMPLATE" | sudo tee /opt/xray-frontend/config.json >/dev/null
 sudo touch "$XRAY_FRONTEND_ACCESS_LOG_PATH" "$XRAY_FRONTEND_ERROR_LOG_PATH" /opt/xray-frontend/clients-meta.json
 

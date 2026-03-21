@@ -15,11 +15,12 @@ set +a
 : "${XRAY_RELAY_PORT:?}"
 : "${XRAY_RELAY_UUID:?}"
 
-sudo apt-get update >/dev/null
-sudo apt-get install -y curl gettext-base >/dev/null
+sudo bash -c "$(declare -f wait_for_apt_locks); $(declare -f apt_get_safe); wait_for_apt_locks"
+sudo bash -c "$(declare -f wait_for_apt_locks); $(declare -f apt_get_safe); apt_get_safe update >/dev/null"
+sudo bash -c "$(declare -f wait_for_apt_locks); $(declare -f apt_get_safe); apt_get_safe install -y curl gettext-base >/dev/null"
 sudo install -d -m 755 /opt/xray-relay
 if [[ ! -x /opt/xray-relay/xray ]]; then
-  sudo bash -c "$(declare -f install_xray_binary); install_xray_binary /opt/xray-relay"
+  sudo bash -c "$(declare -f wait_for_apt_locks); $(declare -f apt_get_safe); $(declare -f install_xray_binary); install_xray_binary /opt/xray-relay"
 fi
 sudo chmod 755 /opt/xray-relay/xray
 
@@ -45,4 +46,5 @@ EOF
 
 sudo systemctl daemon-reload
 sudo systemctl enable --now xray-relay
+sudo bash -c "$(declare -f wait_for_tcp_endpoint); wait_for_tcp_endpoint 127.0.0.1 '$XRAY_RELAY_PORT'"
 sudo systemctl status xray-relay --no-pager -l | sed -n '1,20p'

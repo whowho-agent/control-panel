@@ -17,6 +17,14 @@
           Validating app-path relay host {{ ipsec_expected_app_relay_host }}
           (private cutover expected={{ 'yes' if ipsec_expect_private_app_path | bool else 'no' }}).
 
+    - name: Wait for expected relay endpoint to answer before app-path validation
+      wait_for:
+        host: "{{ ipsec_expected_app_relay_host }}"
+        port: "{{ xray_relay_port }}"
+        timeout: 90
+        delay: 2
+        state: started
+
     - name: Validate frontend service is active on gateway
       command: systemctl is-active xray-frontend
       register: gateway_frontend_status

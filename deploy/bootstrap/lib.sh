@@ -1,12 +1,101 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+APT_LOCK_WAIT_TIMEOUT="${APT_LOCK_WAIT_TIMEOUT:-600}"
+APT_LOCK_WAIT_INTERVAL="${APT_LOCK_WAIT_INTERVAL:-5}"
+TCP_WAIT_TIMEOUT="${TCP_WAIT_TIMEOUT:-90}"
+TCP_WAIT_INTERVAL="${TCP_WAIT_INTERVAL:-2}"
+
 require_env_file() {
   local env_file="$1"
   if [[ ! -f "$env_file" ]]; then
     echo "env file not found: $env_file"
     exit 1
   fi
+}
+
+wait_for_apt_locks() {
+  local timeout="${1:-$APT_LOCK_WAIT_TIMEOUT}"
+  local interval="${2:-$APT_LOCK_WAIT_INTERVAL}"
+  local waited=0
+  local -a lock_paths=(
+    /var/lib/dpkg/lock-frontend
+    /var/lib/dpkg/lock
+    /var/lib/apt/lists/lock
+    /var/cache/apt/archives/lock
+  )
+
+  while (( waited < timeout )); do
+    local busy=0
+    local service_busy=0
+
+    if command -v systemctl >/dev/null 2>&1; then
+      for unit in apt-daily.service apt-daily-upgrade.service unattended-upgrades.service; do
+        if systemctl is-active --quiet "$unit"; then
+          service_busy=1
+          break
+        fi
+      done
+    fi
+
+    if command -v fuser >/dev/null 2>&1; then
+      for lock_path in "${lock_paths[@]}"; do
+        if fuser "$lock_path" >/dev/null 2>&1; then
+          busy=1
+          break
+        fi
+      done
+    elif pgrep -xfa "(apt|apt-get|dpkg|unattended-upgrade).*" >/dev/null 2>&1; then
+      busy=1
+    fi
+
+    if (( busy == 0 && service_busy == 0 )); then
+      return 0
+    fi
+
+    sleep "$interval"
+    waited=$((waited + interval))
+  done
+
+  echo "timed out waiting for apt/dpkg locks or unattended-upgrades to finish after ${timeout}s" >&2
+  return 1
+}
+
+apt_get_safe() {
+  wait_for_apt_locks
+  DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout="$APT_LOCK_WAIT_TIMEOUT" "$@"
+}
+
+wait_for_tcp_endpoint() {
+  local host="$1"
+  local port="$2"
+  local timeout="${3:-$TCP_WAIT_TIMEOUT}"
+  local interval="${4:-$TCP_WAIT_INTERVAL}"
+  local waited=0
+
+  while (( waited < timeout )); do
+    if python3 - "$host" "$port" <<'PY'
+import socket
+import sys
+
+host = sys.argv[1]
+port = int(sys.argv[2])
+try:
+    with socket.create_connection((host, port), timeout=2):
+        pass
+except OSError:
+    raise SystemExit(1)
+PY
+    then
+      return 0
+    fi
+
+    sleep "$interval"
+    waited=$((waited + interval))
+  done
+
+  echo "timed out waiting for TCP endpoint ${host}:${port} after ${timeout}s" >&2
+  return 1
 }
 
 install_xray_binary() {
@@ -18,8 +107,8 @@ install_xray_binary() {
   tmp_dir="$(mktemp -d)"
   trap 'rm -rf "$tmp_dir"' RETURN
 
-  apt-get update >/dev/null
-  apt-get install -y curl unzip >/dev/null
+  apt_get_safe update >/dev/null
+  apt_get_safe install -y curl unzip >/dev/null
   install -d -m 755 "$install_dir"
 
   curl -fsSL "$url" -o "$tmp_dir/xray.zip"

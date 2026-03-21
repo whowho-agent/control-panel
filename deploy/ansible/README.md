@@ -22,6 +22,8 @@ ansible-playbook -i deploy/ansible/inventory.ini deploy/ansible/site.yml
 ## Notes
 - Current playbooks are thin wrappers around existing bootstrap scripts.
 - This keeps one source of truth for provisioning logic while giving repeatable orchestration.
+- Fresh Ubuntu installs are now hardened against `unattended-upgrades` lock races in both bootstrap and Ansible package-install paths (`lock_timeout: 600` plus explicit wait for apt/dpkg/unattended-upgrades to go idle).
+- Gateway/control-plane orchestration now waits for the relay endpoint to answer before bootstrap/cutover so private-path bring-up does not race `10.10.10.2:9443` readiness.
 - Next step would be replacing shell wrappers with native Ansible tasks/templates.
 - `xray_transport_mode` controls which relay address frontend/control-plane use:
   - `direct` → `xray_relay_host`

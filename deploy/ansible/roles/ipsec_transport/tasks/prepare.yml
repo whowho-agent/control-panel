@@ -1,3 +1,30 @@
+- name: Wait for unattended-upgrades/apt/dpkg lock contention to clear before package install
+  shell: |
+    set -euo pipefail
+    deadline=$(( $(date +%s) + 600 ))
+    while [ "$(date +%s)" -lt "$deadline" ]; do
+      busy=0
+      for unit in apt-daily.service apt-daily-upgrade.service unattended-upgrades.service; do
+        if systemctl is-active --quiet "$unit"; then
+          busy=1
+          break
+        fi
+      done
+      for lock in /var/lib/dpkg/lock-frontend /var/lib/dpkg/lock /var/lib/apt/lists/lock /var/cache/apt/archives/lock; do
+        if command -v fuser >/dev/null 2>&1 && fuser "$lock" >/dev/null 2>&1; then
+          busy=1
+          break
+        fi
+      done
+      if [ "$busy" -eq 0 ]; then
+        exit 0
+      fi
+      sleep 5
+    done
+    echo "timed out waiting for apt/dpkg locks or unattended-upgrades" >&2
+    exit 1
+  changed_when: false
+
 - name: Install strongSwan/iproute2 packages for starter backend
   apt:
     name:
@@ -5,6 +32,7 @@
       - iproute2
     state: present
     update_cache: true
+    lock_timeout: 600
   when: ipsec_backend == 'starter'
 
 - name: Install strongSwan/iproute2 packages for swanctl backend
@@ -16,6 +44,7 @@
       - iproute2
     state: present
     update_cache: true
+    lock_timeout: 600
   when: ipsec_backend == 'swanctl'
 
 - name: Ensure /etc/swanctl exists for swanctl backend

@@ -106,6 +106,7 @@ def test_validation_checks_established_sa_and_endpoint_reachability() -> None:
 def test_recovery_playbooks_cleanup_xfrm_state_and_both_backends() -> None:
     prepare = (PLAYBOOKS_DIR / 'prepare-ipsec-rollback.yml').read_text()
     recover = (PLAYBOOKS_DIR / 'recover-network.yml').read_text()
+    control_plane = (PLAYBOOKS_DIR / 'control-plane.yml').read_text()
 
     assert 'ipsec-xfrm-cleanup.sh' in prepare
     assert 'strongswan strongswan-starter strongswan-swanctl charon-systemd' in prepare
@@ -114,6 +115,8 @@ def test_recovery_playbooks_cleanup_xfrm_state_and_both_backends() -> None:
     assert 'Stop and disable strongSwan primary swanctl service when present' in recover
     assert 'Stop and disable strongSwan swanctl backend when present' in recover
     assert 'Restore backed-up swanctl.conf if present' in recover
+    assert 'Wait for unattended-upgrades/apt/dpkg lock contention to clear before Docker install' in control_plane
+    assert 'lock_timeout: 600' in control_plane
 
 
 
@@ -127,4 +130,5 @@ def test_app_cutover_validation_playbook_checks_live_runtime_and_control_plane()
     assert '/api/xray-frontend/topology-health' in validate_app
     assert 'egress_probe_ok' in validate_app
     assert 'XRAY_RELAY_HOST={{ ipsec_expected_app_relay_host }}' in validate_app
+    assert 'Wait for expected relay endpoint to answer before app-path validation' in validate_app
 

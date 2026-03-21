@@ -131,11 +131,13 @@ IPSec v2 is accepted only if all pass:
    ansible-playbook -i deploy/ansible/inventory.ini deploy/ansible/playbooks/ipsec.yml -e xray_transport_mode=ipsec
    ```
 4. Verify controller-side SSH remains stable and validation tasks pass.
-5. Run the no-change app-path verifier after transport-only validation succeeds:
+5. Bootstrap/update gateway services only after the relay endpoint is actually answering:
    ```bash
-   ansible-playbook -i deploy/ansible/inventory.ini deploy/ansible/playbooks/validate-ipsec-app-cutover.yml
+   ansible-playbook -i deploy/ansible/inventory.ini deploy/ansible/playbooks/egress.yml -e xray_transport_mode=ipsec
+   ansible-playbook -i deploy/ansible/inventory.ini deploy/ansible/playbooks/gateway.yml -e xray_transport_mode=ipsec
+   ansible-playbook -i deploy/ansible/inventory.ini deploy/ansible/playbooks/control-plane.yml -e xray_transport_mode=ipsec
    ```
-6. If doing a controlled private cutover, switch the app path intentionally and then verify it explicitly:
+6. Run the app-path verifier:
    ```bash
    ansible-playbook -i deploy/ansible/inventory.ini deploy/ansible/playbooks/validate-ipsec-app-cutover.yml -e ipsec_expect_private_app_path=true
    ```
@@ -152,3 +154,4 @@ IPSec v2 is accepted only if all pass:
 - service cutover hooks: present but opt-in and disabled by default
 - firewall enforcement: pending
 - acceptance on live hosts: pending controlled test
+ntrolled test

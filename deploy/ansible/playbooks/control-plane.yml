@@ -62,6 +62,33 @@
           XRAY_TOPOLOGY_CACHE_TTL_SECONDS=10
           XRAY_RELAY_SSH_KEY_SOURCE={{ xray_relay_ssh_key_source }}
 
+    - name: Wait for unattended-upgrades/apt/dpkg lock contention to clear before Docker install
+      shell: |
+        set -euo pipefail
+        deadline=$(( $(date +%s) + 600 ))
+        while [ "$(date +%s)" -lt "$deadline" ]; do
+          busy=0
+          for unit in apt-daily.service apt-daily-upgrade.service unattended-upgrades.service; do
+            if systemctl is-active --quiet "$unit"; then
+              busy=1
+              break
+            fi
+          done
+          for lock in /var/lib/dpkg/lock-frontend /var/lib/dpkg/lock /var/lib/apt/lists/lock /var/cache/apt/archives/lock; do
+            if command -v fuser >/dev/null 2>&1 && fuser "$lock" >/dev/null 2>&1; then
+              busy=1
+              break
+            fi
+          done
+          if [ "$busy" -eq 0 ]; then
+            exit 0
+          fi
+          sleep 5
+        done
+        echo "timed out waiting for apt/dpkg locks or unattended-upgrades" >&2
+        exit 1
+      changed_when: false
+
     - name: Install Docker engine and compose plugin
       apt:
         name:
@@ -69,6 +96,7 @@
           - docker-compose-v2
         state: present
         update_cache: true
+        lock_timeout: 600
 
     - name: Enable and start Docker
       systemd:
@@ -95,6 +123,13 @@
         group: "{{ xray_relay_ssh_user }}"
         mode: '0600'
         force: true
+
+    - name: Wait for configured relay endpoint to become reachable before control-plane bootstrap
+      wait_for:
+        host: "{{ xray_relay_private_host if xray_transport_mode == 'ipsec' else xray_relay_host }}"
+        port: "{{ xray_relay_port }}"
+        timeout: 90
+      when: (xray_relay_private_host if xray_transport_mode == 'ipsec' else xray_relay_host) | length > 0
 
     - name: Run control-plane bootstrap
       command: bash {{ project_root }}/deploy/bootstrap/bootstrap-control-plane.sh {{ project_root }}/deploy/env/control-plane.env

@@ -73,6 +73,24 @@ ssh "${SSH_OPTS[@]}" "$REMOTE_TARGET" "install -m 644 '$REMOTE_BASE_DIR/egress.e
 echo "==> bootstrapping egress on $REMOTE_TARGET"
 ssh -t "${SSH_OPTS[@]}" "$REMOTE_TARGET" "bash '$REMOTE_BASE_DIR/deploy/bootstrap/bootstrap-egress.sh' '$REMOTE_BASE_DIR/deploy/env/egress.env'"
 
+echo "==> waiting for relay readiness on $EGRESS_HOST:${XRAY_RELAY_PORT}"
+ssh "${SSH_OPTS[@]}" "$REMOTE_TARGET" "python3 - <<'PY'
+import socket
+import sys
+import time
+
+host = '127.0.0.1'
+port = int(${XRAY_RELAY_PORT})
+deadline = time.time() + 90
+while time.time() < deadline:
+    try:
+        with socket.create_connection((host, port), timeout=2):
+            sys.exit(0)
+    except OSError:
+        time.sleep(2)
+raise SystemExit(1)
+PY"
+
 echo "==> bootstrapping gateway locally"
 bash "$ROOT_DIR/deploy/bootstrap/bootstrap-gateway.sh" "$TMP_GATEWAY_ENV"
 
