@@ -1,4 +1,4 @@
-- import_playbook: playbooks/ipsec.yml
 - import_playbook: playbooks/egress.yml
+- import_playbook: playbooks/ipsec.yml
 - import_playbook: playbooks/gateway.yml
 - import_playbook: playbooks/control-plane.yml
