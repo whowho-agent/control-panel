@@ -100,10 +100,22 @@
   changed_when: false
   failed_when: firewall_tool_check.rc != 0
 
+- name: Normalize controller-side external reachability ports input
+  set_fact:
+    ipsec_external_reachability_ports_normalized: >-
+      {{
+        (
+          ipsec_external_reachability_ports
+          if (ipsec_external_reachability_ports is sequence and ipsec_external_reachability_ports is not string)
+          else (ipsec_external_reachability_ports | default([]) | from_yaml)
+        )
+      }}
+  when: ipsec_validate_external_reachability | bool
+
 - name: Derive controller-side external reachability targets
   set_fact:
     ipsec_external_reachability_targets: >-
-      {{ ([hostvars[inventory_hostname].ansible_port | default(22) | int] + (ipsec_external_reachability_ports | default([]))) | unique }}
+      {{ ([hostvars[inventory_hostname].ansible_port | default(22) | int] + (ipsec_external_reachability_ports_normalized | default([]))) | map('int') | unique }}
   when: ipsec_validate_external_reachability | bool
 
 - name: Validate controller can still reach host public TCP ports after IPSec apply
