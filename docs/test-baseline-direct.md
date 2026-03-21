@@ -47,6 +47,7 @@ Expected shape:
 
 ## Important implementation details
 - control-plane uses live host frontend runtime, not a container-only copy
+- control-plane runs with `network_mode: host` to avoid Docker bridge/NAT drift during network recovery and to preserve direct host-equivalent reachability to egress
 - frontend runtime files are mounted individually into the control-plane container
 - relay SSH key is mounted into container as a regular file at `/relay_ssh_key`
 - control-plane uses that key to query relay service state and synthetic egress probe

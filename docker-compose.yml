@@ -5,8 +5,7 @@ services:
       dockerfile: Dockerfile
     container_name: xray-control-plane
     restart: unless-stopped
-    ports:
-      - "8000:8000"
+    network_mode: host
     pid: host
     privileged: true
     environment:
