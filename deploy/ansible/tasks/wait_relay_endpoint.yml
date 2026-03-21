@@ -1,0 +1,8 @@
+- name: Wait for configured relay endpoint to become reachable
+  wait_for:
+    host: "{{ deploy_wait_relay_host }}"
+    port: "{{ deploy_wait_relay_port }}"
+    timeout: "{{ deploy_wait_relay_timeout | default(90) }}"
+    delay: "{{ deploy_wait_relay_delay | default(0) }}"
+    state: started
+  when: deploy_wait_relay_host | default('') | length > 0

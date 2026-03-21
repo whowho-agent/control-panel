@@ -120,6 +120,45 @@ def test_recovery_playbooks_cleanup_xfrm_state_and_both_backends() -> None:
 
 
 
+def test_ansible_playbooks_share_common_bootstrap_and_validation_task_includes() -> None:
+    gateway = (PLAYBOOKS_DIR / 'gateway.yml').read_text()
+    egress = (PLAYBOOKS_DIR / 'egress.yml').read_text()
+    control_plane = (PLAYBOOKS_DIR / 'control-plane.yml').read_text()
+    bootstrap_dirs = (ROOT / 'deploy' / 'ansible' / 'tasks' / 'bootstrap_project_dirs.yml').read_text()
+    copy_assets = (ROOT / 'deploy' / 'ansible' / 'tasks' / 'copy_bootstrap_assets.yml').read_text()
+    wait_relay = (ROOT / 'deploy' / 'ansible' / 'tasks' / 'wait_relay_endpoint.yml').read_text()
+    validate_service = (ROOT / 'deploy' / 'ansible' / 'tasks' / 'validate_systemd_service.yml').read_text()
+
+    assert 'include_tasks: ../tasks/bootstrap_project_dirs.yml' in gateway
+    assert 'include_tasks: ../tasks/bootstrap_project_dirs.yml' in egress
+    assert 'include_tasks: ../tasks/bootstrap_project_dirs.yml' in control_plane
+    assert 'include_tasks: ../tasks/copy_bootstrap_assets.yml' in gateway
+    assert 'include_tasks: ../tasks/copy_bootstrap_assets.yml' in egress
+    assert 'include_tasks: ../tasks/copy_bootstrap_assets.yml' in control_plane
+    assert 'include_tasks: ../tasks/wait_relay_endpoint.yml' in gateway
+    assert 'include_tasks: ../tasks/wait_relay_endpoint.yml' in control_plane
+    assert 'include_tasks: ../tasks/validate_systemd_service.yml' in gateway
+    assert 'include_tasks: ../tasks/validate_systemd_service.yml' in egress
+    assert 'Ensure project directories exist' in bootstrap_dirs
+    assert 'Copy bootstrap assets' in copy_assets
+    assert 'Wait for configured relay endpoint to become reachable' in wait_relay
+    assert 'Validate {{ deploy_validate_service_name }} service is active' in validate_service
+
+
+
+def test_bootstrap_library_consolidates_env_loading_and_package_install_helpers() -> None:
+    bootstrap_lib = (ROOT / 'deploy' / 'bootstrap' / 'lib.sh').read_text()
+    control_plane_bootstrap = (ROOT / 'deploy' / 'bootstrap' / 'bootstrap-control-plane.sh').read_text()
+
+    assert 'load_env_file() {' in bootstrap_lib
+    assert 'require_env_vars() {' in bootstrap_lib
+    assert 'install_apt_packages() {' in bootstrap_lib
+    assert 'log_phase() {' in bootstrap_lib
+    assert 'load_env_file "$ENV_FILE"' in control_plane_bootstrap
+    assert 'control-plane relay readiness check' in control_plane_bootstrap
+
+
+
 def test_app_cutover_validation_playbook_checks_live_runtime_and_control_plane() -> None:
     validate_app = (PLAYBOOKS_DIR / 'validate-ipsec-app-cutover.yml').read_text()
 

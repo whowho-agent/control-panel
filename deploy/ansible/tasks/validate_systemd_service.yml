@@ -1,0 +1,9 @@
+- name: Validate {{ deploy_validate_service_name }} service is active
+  command: "systemctl is-active {{ deploy_validate_service_name }}"
+  register: deploy_validate_service_status
+  changed_when: false
+  failed_when: deploy_validate_service_status.stdout.strip() != 'active'
+
+- name: Validate {{ deploy_validate_service_name }} port is listening
+  shell: "ss -lnt | grep -F ':{{ deploy_validate_service_port }} '"
+  changed_when: false

@@ -2,28 +2,21 @@
   hosts: gateway
   become: true
   vars:
-    project_root: /opt/control-panel
+    project_root: "{{ deploy_project_root }}"
+    deploy_effective_relay_host: "{{ xray_relay_private_host if xray_transport_mode == 'ipsec' else xray_relay_host }}"
+    deploy_project_directories:
+      - "{{ project_root }}"
+      - "{{ project_root }}/deploy/bootstrap"
+      - "{{ project_root }}/deploy/templates"
+      - "{{ project_root }}/deploy/env"
+    deploy_bootstrap_assets:
+      - { src: "{{ playbook_dir }}/../../bootstrap/bootstrap-gateway.sh", dest: "{{ project_root }}/deploy/bootstrap/bootstrap-gateway.sh", mode: "0755" }
+      - { src: "{{ playbook_dir }}/../../bootstrap/lib.sh", dest: "{{ project_root }}/deploy/bootstrap/lib.sh", mode: "0644" }
+      - { src: "{{ playbook_dir }}/../../templates/xray-frontend.config.json.template", dest: "{{ project_root }}/deploy/templates/xray-frontend.config.json.template", mode: "0644" }
   tasks:
-    - name: Ensure project directories exist
-      file:
-        path: "{{ item }}"
-        state: directory
-        mode: '0755'
-      loop:
-        - "{{ project_root }}"
-        - "{{ project_root }}/deploy/bootstrap"
-        - "{{ project_root }}/deploy/templates"
-        - "{{ project_root }}/deploy/env"
+    - include_tasks: ../tasks/bootstrap_project_dirs.yml
 
-    - name: Copy gateway bootstrap assets
-      copy:
-        src: "{{ item.src }}"
-        dest: "{{ item.dest }}"
-        mode: "{{ item.mode }}"
-      loop:
-        - { src: "{{ playbook_dir }}/../../bootstrap/bootstrap-gateway.sh", dest: "{{ project_root }}/deploy/bootstrap/bootstrap-gateway.sh", mode: "0755" }
-        - { src: "{{ playbook_dir }}/../../bootstrap/lib.sh", dest: "{{ project_root }}/deploy/bootstrap/lib.sh", mode: "0644" }
-        - { src: "{{ playbook_dir }}/../../templates/xray-frontend.config.json.template", dest: "{{ project_root }}/deploy/templates/xray-frontend.config.json.template", mode: "0644" }
+    - include_tasks: ../tasks/copy_bootstrap_assets.yml
 
     - name: Write gateway env
       copy:
@@ -36,26 +29,19 @@
           XRAY_FRONTEND_FINGERPRINT={{ xray_frontend_fingerprint }}
           XRAY_FRONTEND_SHORT_IDS={{ xray_frontend_short_ids }}
           XRAY_FRONTEND_REALITY_PRIVATE_KEY={{ xray_frontend_reality_private_key }}
-          XRAY_RELAY_HOST={{ xray_relay_private_host if xray_transport_mode == 'ipsec' else xray_relay_host }}
+          XRAY_RELAY_HOST={{ deploy_effective_relay_host }}
           XRAY_RELAY_PORT={{ xray_relay_port }}
           XRAY_RELAY_UUID={{ xray_relay_uuid }}
 
-    - name: Wait for configured relay endpoint to become reachable before gateway bootstrap
-      wait_for:
-        host: "{{ xray_relay_private_host if xray_transport_mode == 'ipsec' else xray_relay_host }}"
-        port: "{{ xray_relay_port }}"
-        timeout: 90
-      when: (xray_relay_private_host if xray_transport_mode == 'ipsec' else xray_relay_host) | length > 0
+    - include_tasks: ../tasks/wait_relay_endpoint.yml
+      vars:
+        deploy_wait_relay_host: "{{ deploy_effective_relay_host }}"
+        deploy_wait_relay_port: "{{ xray_relay_port }}"
 
     - name: Run gateway bootstrap
       command: bash {{ project_root }}/deploy/bootstrap/bootstrap-gateway.sh {{ project_root }}/deploy/env/gateway.env
 
-    - name: Validate gateway service is active
-      command: systemctl is-active xray-frontend
-      register: gateway_status
-      changed_when: false
-      failed_when: gateway_status.stdout.strip() != 'active'
-
-    - name: Validate gateway port is listening
-      shell: ss -lnt | grep -F ':{{ xray_frontend_port }} '
-      changed_when: false
+    - include_tasks: ../tasks/validate_systemd_service.yml
+      vars:
+        deploy_validate_service_name: xray-frontend
+        deploy_validate_service_port: "{{ xray_frontend_port }}"

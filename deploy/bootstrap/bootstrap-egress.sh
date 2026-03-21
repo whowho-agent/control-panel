@@ -7,23 +7,19 @@ TEMPLATE="$ROOT_DIR/deploy/templates/xray-relay.config.json.template"
 # shellcheck source=./lib.sh
 source "$ROOT_DIR/deploy/bootstrap/lib.sh"
 
-require_env_file "$ENV_FILE"
-set -a
-source "$ENV_FILE"
-set +a
+load_env_file "$ENV_FILE"
+require_env_vars XRAY_RELAY_PORT XRAY_RELAY_UUID
 
-: "${XRAY_RELAY_PORT:?}"
-: "${XRAY_RELAY_UUID:?}"
-
-sudo bash -c "$(declare -f wait_for_apt_locks); $(declare -f apt_get_safe); wait_for_apt_locks"
-sudo bash -c "$(declare -f wait_for_apt_locks); $(declare -f apt_get_safe); apt_get_safe update >/dev/null"
-sudo bash -c "$(declare -f wait_for_apt_locks); $(declare -f apt_get_safe); apt_get_safe install -y curl gettext-base >/dev/null"
+log_phase "egress host preflight"
+sudo bash -c "$(declare -f wait_for_apt_locks); $(declare -f apt_get_safe); $(declare -f install_apt_packages); install_apt_packages curl gettext-base"
 sudo install -d -m 755 /opt/xray-relay
 if [[ ! -x /opt/xray-relay/xray ]]; then
-  sudo bash -c "$(declare -f wait_for_apt_locks); $(declare -f apt_get_safe); $(declare -f install_xray_binary); install_xray_binary /opt/xray-relay"
+  log_phase "install xray relay binary"
+  sudo bash -c "$(declare -f wait_for_apt_locks); $(declare -f apt_get_safe); $(declare -f install_apt_packages); $(declare -f install_xray_binary); install_xray_binary /opt/xray-relay"
 fi
 sudo chmod 755 /opt/xray-relay/xray
 
+log_phase "render and apply egress config"
 envsubst < "$TEMPLATE" | sudo tee /opt/xray-relay/config.json >/dev/null
 
 sudo tee /etc/systemd/system/xray-relay.service >/dev/null <<'EOF'

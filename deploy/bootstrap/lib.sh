@@ -6,12 +6,36 @@ APT_LOCK_WAIT_INTERVAL="${APT_LOCK_WAIT_INTERVAL:-5}"
 TCP_WAIT_TIMEOUT="${TCP_WAIT_TIMEOUT:-90}"
 TCP_WAIT_INTERVAL="${TCP_WAIT_INTERVAL:-2}"
 
+log_phase() {
+  local phase="$1"
+  echo "==> ${phase}"
+}
+
 require_env_file() {
   local env_file="$1"
   if [[ ! -f "$env_file" ]]; then
     echo "env file not found: $env_file"
     exit 1
   fi
+}
+
+load_env_file() {
+  local env_file="$1"
+  require_env_file "$env_file"
+  set -a
+  # shellcheck disable=SC1090
+  source "$env_file"
+  set +a
+}
+
+require_env_vars() {
+  local var_name
+  for var_name in "$@"; do
+    if [[ -z "${!var_name:-}" ]]; then
+      echo "required env var is missing: ${var_name}" >&2
+      exit 1
+    fi
+  done
 }
 
 wait_for_apt_locks() {
@@ -64,6 +88,11 @@ wait_for_apt_locks() {
 apt_get_safe() {
   wait_for_apt_locks
   DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout="$APT_LOCK_WAIT_TIMEOUT" "$@"
+}
+
+install_apt_packages() {
+  apt_get_safe update >/dev/null
+  apt_get_safe install -y "$@" >/dev/null
 }
 
 wait_for_tcp_endpoint() {

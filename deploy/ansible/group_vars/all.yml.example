@@ -1,3 +1,4 @@
+deploy_project_root: /opt/control-panel
 xray_transport_mode: direct  # direct|ipsec
 xray_ipsec_psk: replace-me-psk
 xray_ipsec_gateway_tunnel_ip: 10.10.10.1

@@ -7,20 +7,17 @@ TEMPLATE="$ROOT_DIR/deploy/templates/xray-frontend.config.json.template"
 # shellcheck source=./lib.sh
 source "$ROOT_DIR/deploy/bootstrap/lib.sh"
 
-require_env_file "$ENV_FILE"
-set -a
-source "$ENV_FILE"
-set +a
-
-: "${XRAY_FRONTEND_PORT:?}"
-: "${XRAY_FRONTEND_SERVER_NAME:?}"
-: "${XRAY_FRONTEND_TARGET:?}"
-: "${XRAY_FRONTEND_FINGERPRINT:?}"
-: "${XRAY_FRONTEND_SHORT_IDS:?}"
-: "${XRAY_FRONTEND_REALITY_PRIVATE_KEY:?}"
-: "${XRAY_RELAY_HOST:?}"
-: "${XRAY_RELAY_PORT:?}"
-: "${XRAY_RELAY_UUID:?}"
+load_env_file "$ENV_FILE"
+require_env_vars \
+  XRAY_FRONTEND_PORT \
+  XRAY_FRONTEND_SERVER_NAME \
+  XRAY_FRONTEND_TARGET \
+  XRAY_FRONTEND_FINGERPRINT \
+  XRAY_FRONTEND_SHORT_IDS \
+  XRAY_FRONTEND_REALITY_PRIVATE_KEY \
+  XRAY_RELAY_HOST \
+  XRAY_RELAY_PORT \
+  XRAY_RELAY_UUID
 
 export XRAY_FRONTEND_ACCESS_LOG_PATH="${XRAY_FRONTEND_ACCESS_LOG_PATH:-/opt/xray-frontend/access.log}"
 export XRAY_FRONTEND_ERROR_LOG_PATH="${XRAY_FRONTEND_ERROR_LOG_PATH:-/opt/xray-frontend/error.log}"
@@ -31,21 +28,22 @@ print(', '.join(json.dumps(item.strip()) for item in os.environ['XRAY_FRONTEND_S
 PY
 )"
 
-sudo bash -c "$(declare -f wait_for_apt_locks); $(declare -f apt_get_safe); wait_for_apt_locks"
-sudo bash -c "$(declare -f wait_for_apt_locks); $(declare -f apt_get_safe); apt_get_safe update >/dev/null"
-sudo bash -c "$(declare -f wait_for_apt_locks); $(declare -f apt_get_safe); apt_get_safe install -y qrencode curl gettext-base >/dev/null"
+log_phase "gateway host preflight"
+sudo bash -c "$(declare -f wait_for_apt_locks); $(declare -f apt_get_safe); $(declare -f install_apt_packages); install_apt_packages qrencode curl gettext-base"
 if [[ ! -x /opt/xray-frontend/xray ]]; then
-  sudo bash -c "$(declare -f wait_for_apt_locks); $(declare -f apt_get_safe); $(declare -f install_xray_binary); install_xray_binary /opt/xray-frontend"
+  log_phase "install xray frontend binary"
+  sudo bash -c "$(declare -f wait_for_apt_locks); $(declare -f apt_get_safe); $(declare -f install_apt_packages); $(declare -f install_xray_binary); install_xray_binary /opt/xray-frontend"
 fi
 sudo chmod 755 /opt/xray-frontend/xray
 
+log_phase "gateway readiness checks"
 sudo install -d -m 755 /opt/xray-frontend
 sudo install -d -m 755 "$(dirname "$XRAY_FRONTEND_ACCESS_LOG_PATH")" "$(dirname "$XRAY_FRONTEND_ERROR_LOG_PATH")"
-if [[ -n "${XRAY_RELAY_HOST:-}" && -n "${XRAY_RELAY_PORT:-}" ]]; then
-  sudo bash -c "$(declare -f wait_for_tcp_endpoint); wait_for_tcp_endpoint '$XRAY_RELAY_HOST' '$XRAY_RELAY_PORT'"
-fi
-envsubst < "$TEMPLATE" | sudo tee /opt/xray-frontend/config.json >/dev/null
 sudo touch "$XRAY_FRONTEND_ACCESS_LOG_PATH" "$XRAY_FRONTEND_ERROR_LOG_PATH" /opt/xray-frontend/clients-meta.json
+sudo bash -c "$(declare -f wait_for_tcp_endpoint); wait_for_tcp_endpoint '$XRAY_RELAY_HOST' '$XRAY_RELAY_PORT'"
+
+log_phase "render and apply gateway config"
+envsubst < "$TEMPLATE" | sudo tee /opt/xray-frontend/config.json >/dev/null
 
 sudo tee /etc/systemd/system/xray-frontend.service >/dev/null <<'EOF'
 [Unit]

@@ -2,30 +2,23 @@
   hosts: gateway
   become: true
   vars:
-    project_root: /opt/control-panel
+    project_root: "{{ deploy_project_root }}"
+    deploy_effective_relay_host: "{{ xray_relay_private_host if xray_transport_mode == 'ipsec' else xray_relay_host }}"
+    deploy_project_directories:
+      - "{{ project_root }}"
+      - "{{ project_root }}/app"
+      - "{{ project_root }}/deploy/bootstrap"
+      - "{{ project_root }}/deploy/env"
+    deploy_bootstrap_assets:
+      - { src: "{{ playbook_dir }}/../../../Dockerfile", dest: "{{ project_root }}/Dockerfile" }
+      - { src: "{{ playbook_dir }}/../../../docker-compose.yml", dest: "{{ project_root }}/docker-compose.yml" }
+      - { src: "{{ playbook_dir }}/../../../requirements.txt", dest: "{{ project_root }}/requirements.txt" }
+      - { src: "{{ playbook_dir }}/../../bootstrap/bootstrap-control-plane.sh", dest: "{{ project_root }}/deploy/bootstrap/bootstrap-control-plane.sh", mode: "0755" }
+      - { src: "{{ playbook_dir }}/../../bootstrap/lib.sh", dest: "{{ project_root }}/deploy/bootstrap/lib.sh" }
   tasks:
-    - name: Ensure project directories exist
-      file:
-        path: "{{ item }}"
-        state: directory
-        mode: '0755'
-      loop:
-        - "{{ project_root }}"
-        - "{{ project_root }}/app"
-        - "{{ project_root }}/deploy/bootstrap"
-        - "{{ project_root }}/deploy/env"
+    - include_tasks: ../tasks/bootstrap_project_dirs.yml
 
-    - name: Copy control-plane app assets
-      copy:
-        src: "{{ item.src }}"
-        dest: "{{ item.dest }}"
-        mode: "{{ item.mode | default('0644') }}"
-      loop:
-        - { src: "{{ playbook_dir }}/../../../Dockerfile", dest: "{{ project_root }}/Dockerfile" }
-        - { src: "{{ playbook_dir }}/../../../docker-compose.yml", dest: "{{ project_root }}/docker-compose.yml" }
-        - { src: "{{ playbook_dir }}/../../../requirements.txt", dest: "{{ project_root }}/requirements.txt" }
-        - { src: "{{ playbook_dir }}/../../bootstrap/bootstrap-control-plane.sh", dest: "{{ project_root }}/deploy/bootstrap/bootstrap-control-plane.sh", mode: "0755" }
-        - { src: "{{ playbook_dir }}/../../bootstrap/lib.sh", dest: "{{ project_root }}/deploy/bootstrap/lib.sh" }
+    - include_tasks: ../tasks/copy_bootstrap_assets.yml
 
     - name: Copy app package
       copy:
@@ -45,7 +38,7 @@
           XRAY_FRONTEND_HOST_RUNTIME_DIR=/opt/xray-frontend
           XRAY_BINARY_PATH=/data/frontend/xray
           XRAY_CLIENT_META_PATH=/data/frontend/clients-meta.json
-          XRAY_RELAY_HOST={{ xray_relay_private_host if xray_transport_mode == 'ipsec' else xray_relay_host }}
+          XRAY_RELAY_HOST={{ deploy_effective_relay_host }}
           XRAY_RELAY_PORT={{ xray_relay_port }}
           XRAY_RELAY_SERVICE_NAME=xray-relay
           XRAY_RELAY_SSH_KEY_PATH=/relay_ssh_key
@@ -124,12 +117,10 @@
         mode: '0600'
         force: true
 
-    - name: Wait for configured relay endpoint to become reachable before control-plane bootstrap
-      wait_for:
-        host: "{{ xray_relay_private_host if xray_transport_mode == 'ipsec' else xray_relay_host }}"
-        port: "{{ xray_relay_port }}"
-        timeout: 90
-      when: (xray_relay_private_host if xray_transport_mode == 'ipsec' else xray_relay_host) | length > 0
+    - include_tasks: ../tasks/wait_relay_endpoint.yml
+      vars:
+        deploy_wait_relay_host: "{{ deploy_effective_relay_host }}"
+        deploy_wait_relay_port: "{{ xray_relay_port }}"
 
     - name: Run control-plane bootstrap
       command: bash {{ project_root }}/deploy/bootstrap/bootstrap-control-plane.sh {{ project_root }}/deploy/env/control-plane.env

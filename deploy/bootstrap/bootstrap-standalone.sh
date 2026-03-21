@@ -9,16 +9,10 @@ REMOTE_BASE_DIR="${REMOTE_BASE_DIR:-/tmp/openclaw-xray-bootstrap}"
 # shellcheck source=./lib.sh
 source "$ROOT_DIR/deploy/bootstrap/lib.sh"
 
-require_env_file "$DEPLOY_ENV_FILE"
-require_env_file "$GATEWAY_ENV_FILE"
-require_env_file "$EGRESS_ENV_FILE"
-
-source "$DEPLOY_ENV_FILE"
-source "$GATEWAY_ENV_FILE"
-source "$EGRESS_ENV_FILE"
-
-: "${EGRESS_HOST:?}"
-: "${EGRESS_SSH_USER:?}"
+load_env_file "$DEPLOY_ENV_FILE"
+load_env_file "$GATEWAY_ENV_FILE"
+load_env_file "$EGRESS_ENV_FILE"
+require_env_vars EGRESS_HOST EGRESS_SSH_USER XRAY_RELAY_PORT
 
 EGRESS_SSH_PORT="${EGRESS_SSH_PORT:-22}"
 EGRESS_SSH_KEY_PATH="${EGRESS_SSH_KEY_PATH:-}"
@@ -57,10 +51,10 @@ if not updated:
 Path(dst).write_text('\n'.join(out) + '\n')
 PY
 
-echo "==> checking SSH access to $REMOTE_TARGET"
+log_phase "check SSH access to $REMOTE_TARGET"
 ssh "${SSH_OPTS[@]}" "$REMOTE_TARGET" 'true'
 
-echo "==> staging bootstrap files on $REMOTE_TARGET"
+log_phase "stage egress bootstrap files on $REMOTE_TARGET"
 ssh "${SSH_OPTS[@]}" "$REMOTE_TARGET" "mkdir -p '$REMOTE_BASE_DIR/deploy/bootstrap' '$REMOTE_BASE_DIR/deploy/templates' '$REMOTE_BASE_DIR/deploy/env'"
 scp "${SCP_OPTS[@]}" \
   "$ROOT_DIR/deploy/bootstrap/bootstrap-egress.sh" \
@@ -70,10 +64,10 @@ scp "${SCP_OPTS[@]}" \
   "$REMOTE_TARGET:$REMOTE_BASE_DIR/"
 ssh "${SSH_OPTS[@]}" "$REMOTE_TARGET" "install -m 644 '$REMOTE_BASE_DIR/egress.env' '$REMOTE_BASE_DIR/deploy/env/egress.env' && install -m 644 '$REMOTE_BASE_DIR/xray-relay.config.json.template' '$REMOTE_BASE_DIR/deploy/templates/xray-relay.config.json.template' && install -m 755 '$REMOTE_BASE_DIR/bootstrap-egress.sh' '$REMOTE_BASE_DIR/deploy/bootstrap/bootstrap-egress.sh' && install -m 644 '$REMOTE_BASE_DIR/lib.sh' '$REMOTE_BASE_DIR/deploy/bootstrap/lib.sh'"
 
-echo "==> bootstrapping egress on $REMOTE_TARGET"
+log_phase "bootstrap egress on $REMOTE_TARGET"
 ssh -t "${SSH_OPTS[@]}" "$REMOTE_TARGET" "bash '$REMOTE_BASE_DIR/deploy/bootstrap/bootstrap-egress.sh' '$REMOTE_BASE_DIR/deploy/env/egress.env'"
 
-echo "==> waiting for relay readiness on $EGRESS_HOST:${XRAY_RELAY_PORT}"
+log_phase "wait for relay readiness on $EGRESS_HOST:${XRAY_RELAY_PORT}"
 ssh "${SSH_OPTS[@]}" "$REMOTE_TARGET" "python3 - <<'PY'
 import socket
 import sys
@@ -91,8 +85,8 @@ while time.time() < deadline:
 raise SystemExit(1)
 PY"
 
-echo "==> bootstrapping gateway locally"
+log_phase "bootstrap gateway locally"
 bash "$ROOT_DIR/deploy/bootstrap/bootstrap-gateway.sh" "$TMP_GATEWAY_ENV"
 
-echo "==> standalone bootstrap complete"
+log_phase "standalone bootstrap complete"
 echo "gateway frontend -> relay host: $EGRESS_HOST"

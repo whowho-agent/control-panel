@@ -2,28 +2,20 @@
   hosts: egress
   become: true
   vars:
-    project_root: /opt/control-panel
+    project_root: "{{ deploy_project_root }}"
+    deploy_project_directories:
+      - "{{ project_root }}"
+      - "{{ project_root }}/deploy/bootstrap"
+      - "{{ project_root }}/deploy/templates"
+      - "{{ project_root }}/deploy/env"
+    deploy_bootstrap_assets:
+      - { src: "{{ playbook_dir }}/../../bootstrap/bootstrap-egress.sh", dest: "{{ project_root }}/deploy/bootstrap/bootstrap-egress.sh", mode: "0755" }
+      - { src: "{{ playbook_dir }}/../../bootstrap/lib.sh", dest: "{{ project_root }}/deploy/bootstrap/lib.sh", mode: "0644" }
+      - { src: "{{ playbook_dir }}/../../templates/xray-relay.config.json.template", dest: "{{ project_root }}/deploy/templates/xray-relay.config.json.template", mode: "0644" }
   tasks:
-    - name: Ensure project directories exist
-      file:
-        path: "{{ item }}"
-        state: directory
-        mode: '0755'
-      loop:
-        - "{{ project_root }}"
-        - "{{ project_root }}/deploy/bootstrap"
-        - "{{ project_root }}/deploy/templates"
-        - "{{ project_root }}/deploy/env"
+    - include_tasks: ../tasks/bootstrap_project_dirs.yml
 
-    - name: Copy egress bootstrap assets
-      copy:
-        src: "{{ item.src }}"
-        dest: "{{ item.dest }}"
-        mode: "{{ item.mode }}"
-      loop:
-        - { src: "{{ playbook_dir }}/../../bootstrap/bootstrap-egress.sh", dest: "{{ project_root }}/deploy/bootstrap/bootstrap-egress.sh", mode: "0755" }
-        - { src: "{{ playbook_dir }}/../../bootstrap/lib.sh", dest: "{{ project_root }}/deploy/bootstrap/lib.sh", mode: "0644" }
-        - { src: "{{ playbook_dir }}/../../templates/xray-relay.config.json.template", dest: "{{ project_root }}/deploy/templates/xray-relay.config.json.template", mode: "0644" }
+    - include_tasks: ../tasks/copy_bootstrap_assets.yml
 
     - name: Write egress env
       copy:
@@ -37,12 +29,7 @@
     - name: Run egress bootstrap
       command: bash {{ project_root }}/deploy/bootstrap/bootstrap-egress.sh {{ project_root }}/deploy/env/egress.env
 
-    - name: Validate egress service is active
-      command: systemctl is-active xray-relay
-      register: egress_status
-      changed_when: false
-      failed_when: egress_status.stdout.strip() != 'active'
-
-    - name: Validate egress port is listening
-      shell: ss -lnt | grep -F ':{{ xray_relay_port }} '
-      changed_when: false
+    - include_tasks: ../tasks/validate_systemd_service.yml
+      vars:
+        deploy_validate_service_name: xray-relay
+        deploy_validate_service_port: "{{ xray_relay_port }}"
