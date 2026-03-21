@@ -12,7 +12,7 @@ The repo now treats the following as the primary implementation path:
 - `swanctl.conf`
 - `strongswan.conf`
 - `charon-systemd`
-- explicit `swanctl --load-all` and child initiation during apply
+- explicit `swanctl --load-all` during apply, with CHILD_SA bring-up driven by `start_action = start`
 
 The following remain intentionally available for rollback and comparison:
 - `ipsec.conf`

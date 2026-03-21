@@ -11,49 +11,82 @@
   failed_when: ipsec_xfrm_status.stdout.strip() != 'active'
 
 - name: Validate local tunnel IP is configured on XFRM interface
-  shell: ip -4 addr show dev {{ ipsec_interface_name }} | grep -F '{{ ipsec_local_tunnel_ip }}/30'
+  shell: ip -4 addr show dev {{ ipsec_interface_name }} | grep -F 'inet {{ ipsec_local_tunnel_ip }} '
   changed_when: false
+
+- name: Collect IPSec route table state
+  command: ip route show table {{ ipsec_route_table }}
+  register: ipsec_route_table_state
+  changed_when: false
+  retries: 5
+  delay: 2
+  until: ipsec_route_table_state.stdout | length > 0
 
 - name: Validate route to remote tunnel IP exists in IPSec route table
-  shell: ip route show table {{ ipsec_route_table }} | grep -F '{{ ipsec_remote_tunnel_ip }}/32 dev {{ ipsec_interface_name }}'
-  changed_when: false
+  assert:
+    that:
+      - ipsec_route_table_state.stdout_lines | select('match', '^' ~ (ipsec_remote_tunnel_ip | replace('.', '\\.')) ~ '(/32)? dev ' ~ ipsec_interface_name ~ '( |$)') | list | length > 0
+    fail_msg: "Missing remote tunnel route {{ ipsec_remote_tunnel_ip }}/32 via {{ ipsec_interface_name }} in table {{ ipsec_route_table }}"
 
 - name: Validate route to each protected destination exists in IPSec route table
-  shell: ip route show table {{ ipsec_route_table }} | grep -F '{{ item }}/32 dev {{ ipsec_interface_name }}'
+  assert:
+    that:
+      - ipsec_route_table_state.stdout_lines | select('match', '^' ~ (item | replace('.', '\\.')) ~ '(/32)? dev ' ~ ipsec_interface_name ~ '( |$)') | list | length > 0
+    fail_msg: "Missing protected destination route {{ item }}/32 via {{ ipsec_interface_name }} in table {{ ipsec_route_table }}"
   loop: "{{ ipsec_policy_route_destinations }}"
-  changed_when: false
 
 - name: Validate only narrow protected-host routes are installed
   shell: |
-    ip route show table {{ ipsec_route_table }} | awk '{print $1}' | grep -Ev '^(default|{{ ipsec_local_public_ip | replace(".", "\\.") }}/32|{{ ipsec_remote_public_ip | replace(".", "\\.") }}/32)$'
+    ip route show table {{ ipsec_route_table }} | awk '{print $1}' | sed 's#/32$##'
   register: ipsec_route_table_entries
   changed_when: false
   failed_when: >-
     (ipsec_route_table_entries.stdout_lines | default([]) | difference(
-      [ipsec_remote_tunnel_ip ~ '/32'] + (ipsec_policy_route_destinations | map('regex_replace', '$', '/32') | list)
+      [ipsec_remote_tunnel_ip] + ipsec_policy_route_destinations
     )) | length > 0
 
-- name: Validate policy rule for each protected destination exists
-  shell: ip rule show | grep -F 'to {{ item }}/32 lookup {{ ipsec_route_table }}'
-  loop: "{{ ipsec_policy_route_destinations }}"
+- name: Collect policy rule state
+  command: ip rule show
+  register: ipsec_rule_state
   changed_when: false
+
+- name: Validate policy rule for each protected destination exists
+  assert:
+    that:
+      - ipsec_rule_state.stdout_lines | select('search', 'to ' ~ item) | select('search', 'lookup ' ~ (ipsec_route_table | string)) | list | length > 0 or ipsec_rule_state.stdout_lines | select('search', 'to ' ~ item) | select('search', 'lookup ' ~ ipsec_route_table_name) | list | length > 0
+    fail_msg: "Missing narrow policy rule for protected destination {{ item }} into table {{ ipsec_route_table }}"
+  loop: "{{ ipsec_policy_route_destinations }}"
+
+- name: Validate no generic lookup rule captures all traffic into the IPSec route table
+  assert:
+    that:
+      - ipsec_rule_state.stdout_lines | select('match', '^[0-9]+:.*from all lookup ' ~ (ipsec_route_table | string) ~ '( |$)') | list | length == 0
+      - ipsec_rule_state.stdout_lines | select('match', '^[0-9]+:.*from all lookup ' ~ ipsec_route_table_name ~ '( |$)') | list | length == 0
+    fail_msg: "Found unexpected generic lookup rule into IPSec route table {{ ipsec_route_table }}"
 
 - name: Validate policy rules do not capture peer public IP
-  shell: ip rule show | grep -F 'to {{ ipsec_remote_public_ip }}/32 lookup {{ ipsec_route_table }}'
-  register: ipsec_peer_public_rule
-  changed_when: false
-  failed_when: ipsec_peer_public_rule.rc == 0
+  assert:
+    that:
+      - ipsec_rule_state.stdout_lines | select('search', 'to ' ~ ipsec_remote_public_ip) | select('search', 'lookup ' ~ (ipsec_route_table | string)) | list | length == 0
+      - ipsec_rule_state.stdout_lines | select('search', 'to ' ~ ipsec_remote_public_ip) | select('search', 'lookup ' ~ ipsec_route_table_name) | list | length == 0
+    fail_msg: "Peer public IP {{ ipsec_remote_public_ip }} must not be captured by IPSec policy routing"
 
 - name: Validate xfrm interface id is present on device
-  shell: ip -d link show {{ ipsec_interface_name }} | grep -F 'if_id {{ ipsec_interface_id }}'
+  shell: >-
+    ip -d link show {{ ipsec_interface_name }} |
+    grep -E 'if_id ({{ ipsec_interface_id }}|0x{{ "%x" | format(ipsec_interface_id | int) }})'
+  changed_when: false
+
+- name: Collect backend-specific SA status output
+  command: "{{ ipsec_status_command }}"
+  register: ipsec_sa_status
   changed_when: false
 
 - name: Validate backend-specific status output reports an established SA
-  shell: >-
-    {{ 'ipsec statusall | awk \'/ESTABLISHED/ { found=1 } END { exit(found ? 0 : 1) }\''
-       if ipsec_backend == 'starter'
-       else 'swanctl --list-sas | awk \'/ESTABLISHED|INSTALLED/ { found=1 } END { exit(found ? 0 : 1) }\'' }}
-  changed_when: false
+  assert:
+    that:
+      - ipsec_backend == 'starter' and ('ESTABLISHED' in ipsec_sa_status.stdout) or ipsec_backend == 'swanctl' and (('ESTABLISHED' in ipsec_sa_status.stdout) or ('INSTALLED' in ipsec_sa_status.stdout))
+    fail_msg: "Backend {{ ipsec_backend }} did not report an established/installed SA"
 
 - name: Validate protected endpoint is reachable across the tunnel
   wait_for:

@@ -47,23 +47,16 @@
     enabled: true
     state: started
 
-- name: Load swanctl connections and credentials
-  command: swanctl --load-all
-  when: ipsec_backend == 'swanctl'
-  changed_when: false
-
-- name: Initiate swanctl child when requested
-  command: swanctl --initiate --child xray-protected
-  when:
-    - ipsec_backend == 'swanctl'
-    - ipsec_auto == 'start'
-  changed_when: false
-
 - name: Enable and start XFRM interface unit
   systemd:
     name: ipsec-xfrm.service
     enabled: true
     state: started
+
+- name: Load swanctl connections and credentials
+  command: swanctl --load-all
+  when: ipsec_backend == 'swanctl'
+  changed_when: false
 
 - name: Verify IPSec connection is loaded via backend-specific status command
   command: "{{ ipsec_status_command }}"

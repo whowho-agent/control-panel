@@ -30,5 +30,8 @@ ansible-playbook -i deploy/ansible/inventory.ini deploy/ansible/site.yml
 - `playbooks/control-plane.yml` expects `xray_relay_ssh_private_key_local_path` on the Ansible controller and copies it to `xray_relay_ssh_key_source` on the gateway so control-plane can SSH into egress.
 - The IPSec role now treats `swanctl + charon-systemd` as the primary v2 implementation path and keeps `starter` as explicit fallback.
 - Keep `ipsec_manage_service_cutover=false` for first tests; only enable cutover after transport validation passes on recoverable hosts.
-- Current recommended posture is: narrow protected-host routing only, explicit rollback preparation, `install_policy=no`, and backend rollback safety preserved for both swanctl and starter.
+- After transport-only rollout, use `playbooks/validate-ipsec-app-cutover.yml` as a no-change verifier for actual app-path state:
+  - default (`ipsec_expect_private_app_path=false`) checks readiness / pre-cutover direct app path
+  - `-e ipsec_expect_private_app_path=true` checks controlled private-path cutover state
+- Current recommended posture is: narrow protected-host routing only, explicit rollback preparation, route-based `if_id` selectors, and backend rollback safety preserved for both swanctl and starter.
 - Treat the role as a controlled-test transport path, not as fully production-hardened final state.

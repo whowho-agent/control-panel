@@ -44,8 +44,7 @@ Example tunnel addressing:
 Primary path:
 - `swanctl + charon-systemd`
 - route-based XFRM interface
-- `install_policy = no`
-- dedicated route table with narrow `/32` protected destinations
+- - dedicated route table with narrow `/32` protected destinations
 
 Fallback path retained for rollback safety:
 - `ipsec.conf + ipsec.secrets + strongswan-starter`
@@ -74,7 +73,6 @@ The direct baseline remains the canonical known-good fallback outside IPSec mode
 - render `swanctl.conf` + `strongswan.conf`
 - start/enable `charon-systemd`
 - `swanctl --load-all`
-- `swanctl --initiate --child xray-protected`
 - create XFRM tunnel interface
 - assign point-to-point tunnel IPs
 - install dedicated route table + protected-host policy rule
@@ -133,9 +131,16 @@ IPSec v2 is accepted only if all pass:
    ansible-playbook -i deploy/ansible/inventory.ini deploy/ansible/playbooks/ipsec.yml -e xray_transport_mode=ipsec
    ```
 4. Verify controller-side SSH remains stable and validation tasks pass.
-5. Run app-path checks manually only after transport-only validation succeeds.
-6. Cancel rollback only after transport and app-path checks are green.
-7. Use `-e ipsec_backend=starter` only as an explicit fallback/rollback experiment, not as the primary direction.
+5. Run the no-change app-path verifier after transport-only validation succeeds:
+   ```bash
+   ansible-playbook -i deploy/ansible/inventory.ini deploy/ansible/playbooks/validate-ipsec-app-cutover.yml
+   ```
+6. If doing a controlled private cutover, switch the app path intentionally and then verify it explicitly:
+   ```bash
+   ansible-playbook -i deploy/ansible/inventory.ini deploy/ansible/playbooks/validate-ipsec-app-cutover.yml -e ipsec_expect_private_app_path=true
+   ```
+7. Cancel rollback only after transport and app-path checks are green.
+8. Use `-e ipsec_backend=starter` only as an explicit fallback/rollback experiment, not as the primary direction.
 
 ## Current code status
 - recovery/rollback playbooks: present, clean up XFRM state, and stop both swanctl-era and starter-era units

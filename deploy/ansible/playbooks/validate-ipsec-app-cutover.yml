@@ -1,0 +1,109 @@
+- name: Validate IPSec application-path readiness or cutover state
+  hosts: gateway
+  become: true
+  vars:
+    ipsec_expect_private_app_path: false
+    xray_frontend_runtime_config_path: /opt/xray-frontend/config.json
+    control_plane_project_root: /opt/control-panel
+    control_plane_runtime_root: /opt/control-panel-container
+  tasks:
+    - name: Derive expected relay host for the current validation mode
+      set_fact:
+        ipsec_expected_app_relay_host: "{{ xray_relay_private_host if ipsec_expect_private_app_path | bool else xray_relay_host }}"
+
+    - name: Report expected relay host for validation
+      debug:
+        msg: >-
+          Validating app-path relay host {{ ipsec_expected_app_relay_host }}
+          (private cutover expected={{ 'yes' if ipsec_expect_private_app_path | bool else 'no' }}).
+
+    - name: Validate frontend service is active on gateway
+      command: systemctl is-active xray-frontend
+      register: gateway_frontend_status
+      changed_when: false
+      failed_when: gateway_frontend_status.stdout.strip() != 'active'
+
+    - name: Validate live frontend runtime config points to the expected relay host
+      shell: |
+        python3 - <<'PY'
+        import json
+        from pathlib import Path
+
+        path = Path({{ xray_frontend_runtime_config_path | to_json }})
+        expected = {{ ipsec_expected_app_relay_host | to_json }}
+        if not path.exists():
+            raise SystemExit(f"frontend runtime config not found: {path}")
+        data = json.loads(path.read_text())
+        outbounds = data.get('outbounds', [])
+        relay = next((item for item in outbounds if item.get('tag') == 'to-relay'), None)
+        if relay is None:
+            raise SystemExit('frontend runtime config missing outbound tag=to-relay')
+        actual = (((relay.get('settings') or {}).get('vnext') or [{}])[0]).get('address', '')
+        if actual != expected:
+            raise SystemExit(f"frontend runtime relay host mismatch: expected {expected}, got {actual}")
+        print(actual)
+        PY
+      register: gateway_frontend_relay_host
+      changed_when: false
+
+    - name: Check whether control-plane source env exists
+      stat:
+        path: "{{ control_plane_project_root }}/deploy/env/control-plane.env"
+      register: control_plane_source_env
+
+    - name: Validate control-plane source env points to the expected relay host
+      shell: grep -Fx 'XRAY_RELAY_HOST={{ ipsec_expected_app_relay_host }}' {{ control_plane_project_root }}/deploy/env/control-plane.env
+      changed_when: false
+      when: control_plane_source_env.stat.exists
+
+    - name: Check whether control-plane runtime env exists
+      stat:
+        path: "{{ control_plane_runtime_root }}/.env"
+      register: control_plane_runtime_env
+
+    - name: Validate control-plane runtime env points to the expected relay host
+      shell: grep -Fx 'XRAY_RELAY_HOST={{ ipsec_expected_app_relay_host }}' {{ control_plane_runtime_root }}/.env
+      changed_when: false
+      when: control_plane_runtime_env.stat.exists
+
+    - name: Check whether local control-plane health endpoint is reachable
+      wait_for:
+        host: 127.0.0.1
+        port: 8000
+        timeout: 3
+      register: control_plane_port_check
+      ignore_errors: true
+
+    - name: Validate control-plane frontend config API points to the expected relay host
+      uri:
+        url: http://127.0.0.1:8000/api/xray-frontend/config/frontend
+        user: "{{ xray_admin_user }}"
+        password: "{{ xray_admin_password }}"
+        force_basic_auth: true
+        return_content: true
+      register: control_plane_frontend_config
+      changed_when: false
+      failed_when: >-
+        control_plane_frontend_config.status != 200 or
+        control_plane_frontend_config.json.relay_host != ipsec_expected_app_relay_host
+      when: control_plane_port_check is succeeded
+
+    - name: Validate control-plane topology-health reports a healthy egress probe
+      uri:
+        url: http://127.0.0.1:8000/api/xray-frontend/topology-health
+        user: "{{ xray_admin_user }}"
+        password: "{{ xray_admin_password }}"
+        force_basic_auth: true
+        return_content: true
+      register: control_plane_topology_health
+      changed_when: false
+      failed_when: >-
+        control_plane_topology_health.status != 200 or
+        (control_plane_topology_health.json.egress_probe_ok | default(false) | bool) != true
+      when: control_plane_port_check is succeeded
+
+    - name: Summarize validated app-path state
+      debug:
+        msg: >-
+          App-path validation succeeded. frontend relay={{ gateway_frontend_relay_host.stdout.strip() }};
+          control-plane-api-checked={{ 'yes' if control_plane_port_check is succeeded else 'no' }}.

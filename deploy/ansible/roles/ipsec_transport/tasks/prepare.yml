@@ -63,8 +63,10 @@
       set -euo pipefail
       IFACE="{{ ipsec_interface_name }}"
       RULE_PRIORITY="220"
+      while ip rule del priority "$RULE_PRIORITY" 2>/dev/null; do
+        :
+      done
       {% for destination in ipsec_policy_route_destinations %}
-      ip rule del to "{{ destination }}/32" table "{{ ipsec_route_table }}" priority "$RULE_PRIORITY" 2>/dev/null || true
       ip route del "{{ destination }}/32" dev "$IFACE" table "{{ ipsec_route_table }}" 2>/dev/null || true
       {% endfor %}
       ip route del "{{ ipsec_remote_tunnel_ip }}/32" dev "$IFACE" table "{{ ipsec_route_table }}" 2>/dev/null || true

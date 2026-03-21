@@ -23,8 +23,12 @@ ip addr flush dev "$IFACE" 2>/dev/null || true
 ip addr add "$LOCAL_TUNNEL_IP/30" peer "$REMOTE_TUNNEL_IP/30" dev "$IFACE"
 ip link set "$IFACE" up mtu 1438
 ip route replace "$REMOTE_TUNNEL_IP/32" dev "$IFACE" table "$ROUTE_TABLE"
+
+while ip rule del priority "$RULE_PRIORITY" 2>/dev/null; do
+  :
+done
+
 for destination in "${PROTECTED_DESTINATIONS[@]}"; do
   ip route replace "$destination/32" dev "$IFACE" table "$ROUTE_TABLE"
-  ip rule del to "$destination/32" table "$ROUTE_TABLE" priority "$RULE_PRIORITY" 2>/dev/null || true
   ip rule add to "$destination/32" table "$ROUTE_TABLE" priority "$RULE_PRIORITY"
 done
