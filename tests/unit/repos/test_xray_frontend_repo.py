@@ -225,3 +225,26 @@ def test_read_config_tolerates_literal_backslash_n_suffix(tmp_path: Path) -> Non
     )
 
     assert repo.read_config() == {"inbounds": [], "outbounds": []}
+
+
+def test_write_config_ensures_runtime_log_files_exist(tmp_path: Path) -> None:
+    config_path = tmp_path / "nested" / "config.json"
+    access_log_path = tmp_path / "nested" / "access.log"
+    error_log_path = tmp_path / "nested" / "error.log"
+    xray_path = tmp_path / "xray"
+    xray_path.write_text("#!/usr/bin/env bash\necho 'Public key: derived-pub'\n")
+    xray_path.chmod(0o755)
+
+    repo = XrayFrontendRepo(
+        config_path=str(config_path),
+        access_log_path=str(access_log_path),
+        service_name="xray-frontend",
+        xray_binary_path=str(xray_path),
+        use_nsenter=False,
+    )
+
+    repo.write_config({"log": {"error": str(error_log_path)}, "inbounds": [], "outbounds": []})
+
+    assert config_path.exists()
+    assert access_log_path.exists()
+    assert error_log_path.exists()

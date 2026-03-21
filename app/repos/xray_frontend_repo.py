@@ -239,3 +239,12 @@ class XrayFrontendRepo:
         if raw.endswith("\\n"):
             raw = raw[:-2] + "\n"
         return json.loads(raw)
+
+    def _ensure_runtime_files(self, config: dict) -> None:
+        self.config_path.parent.mkdir(parents=True, exist_ok=True)
+        self.access_log_path.parent.mkdir(parents=True, exist_ok=True)
+        self.access_log_path.touch(exist_ok=True)
+        error_log = config.get("log", {}).get("error")
+        if error_log:
+            Path(error_log).parent.mkdir(parents=True, exist_ok=True)
+            Path(error_log).touch(exist_ok=True)
