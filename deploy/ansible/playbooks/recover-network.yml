@@ -2,9 +2,46 @@
   hosts: gateway:egress
   become: true
   tasks:
-    - name: Stop and disable strongSwan
+    - name: Stop and disable XFRM interface unit
+      systemd:
+        name: ipsec-xfrm.service
+        state: stopped
+        enabled: false
+      failed_when: false
+
+    - name: Run XFRM cleanup helper when present
+      shell: |
+        if [ -x /usr/local/sbin/ipsec-xfrm-cleanup.sh ]; then
+          /usr/local/sbin/ipsec-xfrm-cleanup.sh || true
+        fi
+      args:
+        executable: /bin/bash
+      failed_when: false
+
+    - name: Stop and disable strongSwan primary swanctl service when present
+      systemd:
+        name: strongswan
+        state: stopped
+        enabled: false
+      failed_when: false
+
+    - name: Stop and disable strongSwan starter backend when present
       systemd:
         name: strongswan-starter
+        state: stopped
+        enabled: false
+      failed_when: false
+
+    - name: Stop and disable strongSwan swanctl backend when present
+      systemd:
+        name: strongswan-swanctl
+        state: stopped
+        enabled: false
+      failed_when: false
+
+    - name: Stop and disable charon-systemd when present
+      systemd:
+        name: charon-systemd
         state: stopped
         enabled: false
       failed_when: false
@@ -22,6 +59,24 @@
       shell: |
         if [ -f /etc/ipsec.secrets.bak ]; then
           cp /etc/ipsec.secrets.bak /etc/ipsec.secrets
+        fi
+      args:
+        executable: /bin/bash
+      failed_when: false
+
+    - name: Restore backed-up strongswan.conf if present
+      shell: |
+        if [ -f /etc/strongswan.conf.bak ]; then
+          cp /etc/strongswan.conf.bak /etc/strongswan.conf
+        fi
+      args:
+        executable: /bin/bash
+      failed_when: false
+
+    - name: Restore backed-up swanctl.conf if present
+      shell: |
+        if [ -f /etc/swanctl/swanctl.conf.bak ]; then
+          cp /etc/swanctl/swanctl.conf.bak /etc/swanctl/swanctl.conf
         fi
       args:
         executable: /bin/bash

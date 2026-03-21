@@ -1,3 +1,21 @@
+- name: Assert inventory has exactly one gateway and one egress host
+  assert:
+    that:
+      - groups['gateway'] | default([]) | length == 1
+      - groups['egress'] | default([]) | length == 1
+    fail_msg: "IPSec transport currently supports exactly one gateway and one egress host"
+
+- name: Assert IPSec backend is supported
+  assert:
+    that:
+      - ipsec_backend in ipsec_backend_supported
+    fail_msg: "Unsupported ipsec_backend={{ ipsec_backend }}; expected one of {{ ipsec_backend_supported | join(', ') }}"
+
+- name: Derive backend-specific service/unit metadata
+  set_fact:
+    ipsec_service_unit: "{{ ipsec_backend_service_map[ipsec_backend] }}"
+    ipsec_status_command: "{{ ipsec_backend_status_command_map[ipsec_backend] }}"
+
 - name: Derive IPSec endpoint variables for gateway
   set_fact:
     ipsec_local_public_ip: "{{ hostvars[inventory_hostname].ansible_host }}"
@@ -6,6 +24,10 @@
     ipsec_remote_id: "{{ xray_ipsec_egress_id | default(hostvars[groups['egress'][0]].ansible_host) }}"
     ipsec_local_tunnel_ip: "{{ xray_ipsec_gateway_tunnel_ip }}"
     ipsec_remote_tunnel_ip: "{{ xray_ipsec_egress_tunnel_ip }}"
+    ipsec_policy_route_destinations:
+      - "{{ xray_relay_private_host }}"
+    ipsec_validation_host: "{{ xray_relay_private_host }}"
+    ipsec_protected_service_name: relay
   when: "'gateway' in group_names"
 
 - name: Derive IPSec endpoint variables for egress
@@ -16,6 +38,10 @@
     ipsec_remote_id: "{{ xray_ipsec_gateway_id | default(hostvars[groups['gateway'][0]].ansible_host) }}"
     ipsec_local_tunnel_ip: "{{ xray_ipsec_egress_tunnel_ip }}"
     ipsec_remote_tunnel_ip: "{{ xray_ipsec_gateway_tunnel_ip }}"
+    ipsec_policy_route_destinations:
+      - "{{ xray_ipsec_gateway_tunnel_ip }}"
+    ipsec_validation_host: "{{ xray_ipsec_gateway_tunnel_ip }}"
+    ipsec_protected_service_name: gateway
   when: "'egress' in group_names"
 
 - name: Assert required IPSec variables are provided
@@ -27,7 +53,18 @@
       - xray_ipsec_egress_tunnel_ip is defined
       - xray_relay_private_host is defined
       - xray_relay_private_host | length > 0
-    fail_msg: "IPSec mode requires PSK, tunnel IPs, and xray_relay_private_host"
+      - ipsec_interface_id | int > 0
+      - ipsec_route_table | int > 0
+    fail_msg: "IPSec mode requires PSK, tunnel IPs, relay private host, interface id, and route table"
+
+- name: Assert IPSec tunnel IP plan is sane
+  assert:
+    that:
+      - xray_ipsec_gateway_tunnel_ip != xray_ipsec_egress_tunnel_ip
+      - ipsec_local_public_ip != ipsec_remote_public_ip
+      - ipsec_local_tunnel_ip is match('^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$')
+      - ipsec_remote_tunnel_ip is match('^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$')
+    fail_msg: "IPSec mode requires distinct public/tunnel IPs and IPv4 tunnel endpoints"
 
 - name: Assert relay private host matches egress tunnel IP in ipsec mode
   assert:
@@ -35,3 +72,21 @@
       - xray_relay_private_host == xray_ipsec_egress_tunnel_ip
     fail_msg: "xray_relay_private_host should point at the egress tunnel IP when xray_transport_mode=ipsec"
   when: "'gateway' in group_names"
+
+- name: Assert protected hosts stay narrow and never include public peer or default route
+  assert:
+    that:
+      - ipsec_protected_hosts | difference(['', '0.0.0.0/0', ipsec_remote_public_ip, ipsec_local_public_ip]) | length == ipsec_protected_hosts | reject('equalto', '') | list | length
+      - ipsec_policy_route_destinations | difference(['', '0.0.0.0/0', ipsec_remote_public_ip, ipsec_local_public_ip]) | length == ipsec_policy_route_destinations | reject('equalto', '') | list | length
+      - ipsec_policy_route_destinations | reject('equalto', '') | list | length > 0
+    fail_msg: "ipsec_protected_hosts must not include empty values, public peer/local IPs, or default route; keep protected routing narrow"
+
+- name: Warn when OOB console precheck is still manual
+  debug:
+    msg: "Manual precheck required: confirm provider console/OOB access before live IPSec rollout"
+  when: ipsec_precheck_require_oob_console | bool
+
+- name: Warn when snapshot precheck is still manual
+  debug:
+    msg: "Manual precheck required: confirm fresh provider snapshot/restore point before live IPSec rollout"
+  when: ipsec_precheck_require_snapshot | bool

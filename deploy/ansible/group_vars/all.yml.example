@@ -2,6 +2,7 @@ xray_transport_mode: direct  # direct|ipsec
 xray_ipsec_psk: replace-me-psk
 xray_ipsec_gateway_tunnel_ip: 10.10.10.1
 xray_ipsec_egress_tunnel_ip: 10.10.10.2
+ipsec_manage_service_cutover: false
 xray_frontend_port: 9444
 xray_frontend_server_name: example.com
 xray_frontend_target: example.com:443

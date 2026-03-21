@@ -1,0 +1,61 @@
+- name: Reset egress node
+  hosts: egress
+  become: true
+  tasks:
+    - name: Stop and disable xray-relay
+      systemd:
+        name: xray-relay
+        state: stopped
+        enabled: false
+      failed_when: false
+
+    - name: Remove egress runtime and service files
+      file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /opt/xray-relay
+        - /etc/systemd/system/xray-relay.service
+        - /opt/control-panel
+      failed_when: false
+
+    - name: Reload systemd on egress
+      systemd:
+        daemon_reload: true
+
+- name: Reset gateway node
+  hosts: gateway
+  become: true
+  tasks:
+    - name: Stop and disable xray-frontend
+      systemd:
+        name: xray-frontend
+        state: stopped
+        enabled: false
+      failed_when: false
+
+    - name: Stop and remove control-plane container stack
+      shell: |
+        set -e
+        if [ -d /opt/control-panel ]; then
+          cd /opt/control-panel
+          docker compose down --remove-orphans || true
+        fi
+      args:
+        executable: /bin/bash
+      failed_when: false
+
+    - name: Remove gateway runtime and service files
+      file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /opt/xray-frontend
+        - /etc/systemd/system/xray-frontend.service
+        - /opt/control-panel
+        - /opt/control-panel-container
+      failed_when: false
+
+    - name: Reload systemd on gateway
+      systemd:
+        daemon_reload: true

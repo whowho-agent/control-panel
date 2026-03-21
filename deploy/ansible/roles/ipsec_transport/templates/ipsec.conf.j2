@@ -14,11 +14,16 @@ conn xray-interconnect
   rightid={{ ipsec_remote_id }}
   leftsubnet=0.0.0.0/0
   rightsubnet=0.0.0.0/0
-  mark={{ ipsec_mark }}
-  installpolicy=yes
+  installpolicy={{ 'yes' if ipsec_install_policy | bool else 'no' }}
+  leftupdown=/bin/true
+  if_id_in={{ ipsec_interface_id }}
+  if_id_out={{ ipsec_interface_id }}
   dpdaction=restart
   dpddelay=30s
+  closeaction=restart
+  ikelifetime=60m
+  lifetime=20m
   rekey=no
 
-# Note: route-based XFRM/VTI interface creation and policy-routing setup are part of
-# ipsec_transport v2 implementation and are not fully expressed by ipsec.conf alone.
+# Route-based XFRM interface creation and policy routing are managed by
+# ipsec-xfrm.service + /usr/local/sbin/ipsec-xfrm.sh.

@@ -6,17 +6,25 @@ LOCAL_PUBLIC_IP="{{ ipsec_local_public_ip }}"
 REMOTE_PUBLIC_IP="{{ ipsec_remote_public_ip }}"
 LOCAL_TUNNEL_IP="{{ ipsec_local_tunnel_ip }}"
 REMOTE_TUNNEL_IP="{{ ipsec_remote_tunnel_ip }}"
-PRIVATE_RELAY_HOST="{{ xray_relay_private_host }}"
-MARK="{{ ipsec_mark }}"
+IF_ID="{{ ipsec_interface_id }}"
 ROUTE_TABLE="{{ ipsec_route_table }}"
+RULE_PRIORITY="220"
+PROTECTED_DESTINATIONS=({% for destination in ipsec_policy_route_destinations %}"{{ destination }}" {% endfor %})
 UNDERLAY_DEV="$(ip route get "$REMOTE_PUBLIC_IP" | awk '/dev/ {print $5; exit}')"
 
+if [[ -z "$UNDERLAY_DEV" ]]; then
+  echo "failed to determine underlay device for $REMOTE_PUBLIC_IP" >&2
+  exit 1
+fi
+
 ip link del "$IFACE" 2>/dev/null || true
-ip link add "$IFACE" type xfrm dev "$UNDERLAY_DEV" if_id "$MARK"
-ip addr flush dev "$IFACE" || true
-ip addr add "$LOCAL_TUNNEL_IP/30" dev "$IFACE"
-ip link set "$IFACE" up
+ip link add "$IFACE" type xfrm dev "$UNDERLAY_DEV" if_id "$IF_ID"
+ip addr flush dev "$IFACE" 2>/dev/null || true
+ip addr add "$LOCAL_TUNNEL_IP/30" peer "$REMOTE_TUNNEL_IP/30" dev "$IFACE"
+ip link set "$IFACE" up mtu 1438
 ip route replace "$REMOTE_TUNNEL_IP/32" dev "$IFACE" table "$ROUTE_TABLE"
-ip route replace "$PRIVATE_RELAY_HOST/32" dev "$IFACE" table "$ROUTE_TABLE"
-ip rule del to "$PRIVATE_RELAY_HOST/32" table "$ROUTE_TABLE" priority 220 2>/dev/null || true
-ip rule add to "$PRIVATE_RELAY_HOST/32" table "$ROUTE_TABLE" priority 220
+for destination in "${PROTECTED_DESTINATIONS[@]}"; do
+  ip route replace "$destination/32" dev "$IFACE" table "$ROUTE_TABLE"
+  ip rule del to "$destination/32" table "$ROUTE_TABLE" priority "$RULE_PRIORITY" 2>/dev/null || true
+  ip rule add to "$destination/32" table "$ROUTE_TABLE" priority "$RULE_PRIORITY"
+done

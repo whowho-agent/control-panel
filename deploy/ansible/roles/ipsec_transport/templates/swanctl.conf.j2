@@ -1,0 +1,38 @@
+connections {
+  xray-interconnect {
+    version = 2
+    proposals = {{ ipsec_ike_proposal }}
+    local_addrs = {{ ipsec_local_public_ip }}
+    remote_addrs = {{ ipsec_remote_public_ip }}
+    local {
+      auth = psk
+      id = {{ ipsec_local_id }}
+    }
+    remote {
+      auth = psk
+      id = {{ ipsec_remote_id }}
+    }
+    children {
+      xray-protected {
+        local_ts = 0.0.0.0/0
+        remote_ts = 0.0.0.0/0
+        esp_proposals = {{ ipsec_esp_proposal }}
+        start_action = start
+        dpd_action = restart
+        close_action = restart
+        rekey_time = 0s
+        life_time = 20m
+        if_id_in = {{ ipsec_interface_id }}
+        if_id_out = {{ ipsec_interface_id }}
+      }
+    }
+  }
+}
+
+secrets {
+  ike-xray-interconnect {
+    id-1 = {{ ipsec_local_id }}
+    id-2 = {{ ipsec_remote_id }}
+    secret = {{ xray_ipsec_psk }}
+  }
+}

@@ -1,11 +1,38 @@
 ipsec_enabled: "{{ xray_transport_mode == 'ipsec' }}"
+ipsec_backend: swanctl  # swanctl|starter; swanctl is the primary v2 path, starter stays as fallback
+ipsec_backend_supported:
+  - swanctl
+  - starter
+ipsec_backend_service_map:
+  swanctl: strongswan
+  starter: strongswan-starter
+ipsec_backend_status_command_map:
+  swanctl: swanctl --list-sas
+  starter: ipsec statusall
 ipsec_ike_proposal: aes256-sha256-modp2048
 ipsec_esp_proposal: aes256-sha256
 ipsec_auto: start
+ipsec_install_policy: false
 ipsec_mark: 42
-ipsec_route_table: 220
+ipsec_interface_id: "{{ ipsec_mark }}"
+ipsec_route_table: 221
 ipsec_route_table_name: xray_ipsec
 ipsec_interface_name: xfrm0
 ipsec_firewall_manage: false
+ipsec_management_bypass_tcp_ports:
+  - 22
+ipsec_management_bypass_udp_ports:
+  - 500
+  - 4500
+ipsec_management_bypass_ip_protocols:
+  - 50
+ipsec_management_bypass_cidrs: []
+ipsec_protected_hosts:
+  - "{{ xray_relay_private_host | default('') }}"
 ipsec_precheck_require_oob_console: true
 ipsec_precheck_require_snapshot: true
+ipsec_manage_service_cutover: false
+ipsec_restart_frontend_on_gateway: true
+ipsec_restart_control_plane_on_gateway: true
+ipsec_frontend_service_name: xray-frontend
+ipsec_control_plane_service_name: xray-admin

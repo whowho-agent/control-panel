@@ -214,7 +214,7 @@ Portable v1 rules:
 - inter-node transport: parameterized as `direct` or `ipsec`
 - IPSec tunnel provisioning: Ansible role `ipsec_transport`
 
-This is the stable bridge design for v1. `ipsec` should be treated as the production-default posture when a protected inter-node segment is required.
+This is the stable bridge design for v1. `ipsec` is the intended protected inter-node posture, but the current repo implementation must still be treated as a controlled-test scaffold until the next-iteration management-bypass and rollback model is validated.
 
 ## What should be standardized next
 

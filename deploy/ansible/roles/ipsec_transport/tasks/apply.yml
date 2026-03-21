@@ -1,29 +1,99 @@
-- name: Render ipsec.conf for route-based v2 baseline
+- name: Render swanctl.conf for swanctl backend
+  template:
+    src: swanctl.conf.j2
+    dest: /etc/swanctl/swanctl.conf
+    owner: root
+    group: root
+    mode: '0600'
+  when: ipsec_backend == 'swanctl'
+  notify: restart ipsec
+
+- name: Render strongswan.conf for swanctl backend
+  template:
+    src: strongswan.conf.j2
+    dest: /etc/strongswan.conf
+    owner: root
+    group: root
+    mode: '0644'
+  when: ipsec_backend == 'swanctl'
+  notify: restart ipsec
+
+- name: Render ipsec.conf for route-based fallback starter baseline
   template:
     src: ipsec.conf.j2
     dest: /etc/ipsec.conf
     owner: root
     group: root
     mode: '0644'
+  when: ipsec_backend == 'starter'
   notify: restart ipsec
 
-- name: Render ipsec.secrets
+- name: Render ipsec.secrets for fallback starter backend
   template:
     src: ipsec.secrets.j2
     dest: /etc/ipsec.secrets
     owner: root
     group: root
     mode: '0600'
+  when: ipsec_backend == 'starter'
   notify: restart ipsec
 
-- name: Enable and start strongSwan
+- name: Flush handlers before starting services
+  meta: flush_handlers
+
+- name: Enable and start backend-specific strongSwan service
   systemd:
-    name: strongswan-starter
+    name: "{{ ipsec_service_unit }}"
     enabled: true
     state: started
+
+- name: Load swanctl connections and credentials
+  command: swanctl --load-all
+  when: ipsec_backend == 'swanctl'
+  changed_when: false
+
+- name: Initiate swanctl child when requested
+  command: swanctl --initiate --child xray-protected
+  when:
+    - ipsec_backend == 'swanctl'
+    - ipsec_auto == 'start'
+  changed_when: false
 
 - name: Enable and start XFRM interface unit
   systemd:
     name: ipsec-xfrm.service
     enabled: true
     state: started
+
+- name: Verify IPSec connection is loaded via backend-specific status command
+  command: "{{ ipsec_status_command }}"
+  register: ipsec_status
+  changed_when: false
+  failed_when: >-
+    (ipsec_backend == 'starter' and 'xray-interconnect' not in ipsec_status.stdout) or
+    (ipsec_backend == 'swanctl' and 'xray-interconnect' not in ipsec_status.stdout)
+
+- name: Wait for private route-based service endpoint to answer
+  wait_for:
+    host: "{{ ipsec_validation_host }}"
+    port: "{{ xray_relay_port if 'gateway' in group_names else 22 }}"
+    timeout: 15
+  when: ipsec_validation_host is defined
+
+- name: Optionally restart frontend service on gateway after transport comes up
+  systemd:
+    name: "{{ ipsec_frontend_service_name }}"
+    state: restarted
+  when:
+    - ipsec_manage_service_cutover | bool
+    - ipsec_restart_frontend_on_gateway | bool
+    - "'gateway' in group_names"
+
+- name: Optionally restart control-plane service on gateway after transport comes up
+  systemd:
+    name: "{{ ipsec_control_plane_service_name }}"
+    state: restarted
+  when:
+    - ipsec_manage_service_cutover | bool
+    - ipsec_restart_control_plane_on_gateway | bool
+    - "'gateway' in group_names"

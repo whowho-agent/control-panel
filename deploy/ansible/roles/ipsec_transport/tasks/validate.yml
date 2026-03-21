@@ -1,5 +1,5 @@
-- name: Validate strongSwan service is active
-  command: systemctl is-active strongswan-starter
+- name: Validate backend-specific strongSwan service is active
+  command: systemctl is-active {{ ipsec_service_unit }}
   register: ipsec_service_status
   changed_when: false
   failed_when: ipsec_service_status.stdout.strip() != 'active'
@@ -11,23 +11,64 @@
   failed_when: ipsec_xfrm_status.stdout.strip() != 'active'
 
 - name: Validate local tunnel IP is configured on XFRM interface
-  shell: ip addr show dev {{ ipsec_interface_name }} | grep -F '{{ ipsec_local_tunnel_ip }}'
+  shell: ip -4 addr show dev {{ ipsec_interface_name }} | grep -F '{{ ipsec_local_tunnel_ip }}/30'
   changed_when: false
 
 - name: Validate route to remote tunnel IP exists in IPSec route table
   shell: ip route show table {{ ipsec_route_table }} | grep -F '{{ ipsec_remote_tunnel_ip }}/32 dev {{ ipsec_interface_name }}'
   changed_when: false
 
-- name: Validate route to private relay host exists in IPSec route table
-  shell: ip route show table {{ ipsec_route_table }} | grep -F '{{ xray_relay_private_host }}/32 dev {{ ipsec_interface_name }}'
+- name: Validate route to each protected destination exists in IPSec route table
+  shell: ip route show table {{ ipsec_route_table }} | grep -F '{{ item }}/32 dev {{ ipsec_interface_name }}'
+  loop: "{{ ipsec_policy_route_destinations }}"
   changed_when: false
 
-- name: Validate policy rule for private relay host exists
-  shell: ip rule show | grep -F 'to {{ xray_relay_private_host }}/32 lookup {{ ipsec_route_table }}'
+- name: Validate only narrow protected-host routes are installed
+  shell: |
+    ip route show table {{ ipsec_route_table }} | awk '{print $1}' | grep -Ev '^(default|{{ ipsec_local_public_ip | replace(".", "\\.") }}/32|{{ ipsec_remote_public_ip | replace(".", "\\.") }}/32)$'
+  register: ipsec_route_table_entries
   changed_when: false
+  failed_when: >-
+    (ipsec_route_table_entries.stdout_lines | default([]) | difference(
+      [ipsec_remote_tunnel_ip ~ '/32'] + (ipsec_policy_route_destinations | map('regex_replace', '$', '/32') | list)
+    )) | length > 0
+
+- name: Validate policy rule for each protected destination exists
+  shell: ip rule show | grep -F 'to {{ item }}/32 lookup {{ ipsec_route_table }}'
+  loop: "{{ ipsec_policy_route_destinations }}"
+  changed_when: false
+
+- name: Validate policy rules do not capture peer public IP
+  shell: ip rule show | grep -F 'to {{ ipsec_remote_public_ip }}/32 lookup {{ ipsec_route_table }}'
+  register: ipsec_peer_public_rule
+  changed_when: false
+  failed_when: ipsec_peer_public_rule.rc == 0
+
+- name: Validate xfrm interface id is present on device
+  shell: ip -d link show {{ ipsec_interface_name }} | grep -F 'if_id {{ ipsec_interface_id }}'
+  changed_when: false
+
+- name: Validate backend-specific status output reports an established SA
+  shell: >-
+    {{ 'ipsec statusall | awk \'/ESTABLISHED/ { found=1 } END { exit(found ? 0 : 1) }\''
+       if ipsec_backend == 'starter'
+       else 'swanctl --list-sas | awk \'/ESTABLISHED|INSTALLED/ { found=1 } END { exit(found ? 0 : 1) }\'' }}
+  changed_when: false
+
+- name: Validate protected endpoint is reachable across the tunnel
+  wait_for:
+    host: "{{ ipsec_validation_host }}"
+    port: "{{ xray_relay_port if 'gateway' in group_names else 22 }}"
+    timeout: 15
 
 - name: Validate firewall ruleset tooling is present
   shell: command -v nft || command -v iptables
   register: firewall_tool_check
   changed_when: false
   failed_when: firewall_tool_check.rc != 0
+
+- name: Report whether service cutover is enabled
+  debug:
+    msg: >-
+      IPSec transport validated via backend {{ ipsec_backend }}. Service cutover management is
+      {{ 'enabled' if ipsec_manage_service_cutover | bool else 'disabled' }}.

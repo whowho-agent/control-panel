@@ -23,6 +23,24 @@
         executable: /bin/bash
       failed_when: false
 
+    - name: Backup strongswan.conf if present
+      shell: |
+        if [ -f /etc/strongswan.conf ] && [ ! -f /etc/strongswan.conf.bak ]; then
+          cp /etc/strongswan.conf /etc/strongswan.conf.bak
+        fi
+      args:
+        executable: /bin/bash
+      failed_when: false
+
+    - name: Backup swanctl.conf if present
+      shell: |
+        if [ -f /etc/swanctl/swanctl.conf ] && [ ! -f /etc/swanctl/swanctl.conf.bak ]; then
+          cp /etc/swanctl/swanctl.conf /etc/swanctl/swanctl.conf.bak
+        fi
+      args:
+        executable: /bin/bash
+      failed_when: false
+
     - name: Install rollback script
       copy:
         dest: "{{ rollback_script_path }}"
@@ -32,10 +50,15 @@
         content: |
           #!/usr/bin/env bash
           set -euo pipefail
-          systemctl stop strongswan-starter || true
-          systemctl disable strongswan-starter || true
+          systemctl stop ipsec-xfrm.service || true
+          /usr/local/sbin/ipsec-xfrm-cleanup.sh || true
+          systemctl disable ipsec-xfrm.service || true
+          systemctl stop strongswan strongswan-starter strongswan-swanctl charon-systemd 2>/dev/null || true
+          systemctl disable strongswan strongswan-starter strongswan-swanctl charon-systemd 2>/dev/null || true
           [ -f /etc/ipsec.conf.bak ] && cp /etc/ipsec.conf.bak /etc/ipsec.conf || true
           [ -f /etc/ipsec.secrets.bak ] && cp /etc/ipsec.secrets.bak /etc/ipsec.secrets || true
+          [ -f /etc/strongswan.conf.bak ] && cp /etc/strongswan.conf.bak /etc/strongswan.conf || true
+          [ -f /etc/swanctl/swanctl.conf.bak ] && cp /etc/swanctl/swanctl.conf.bak /etc/swanctl/swanctl.conf || true
           nft flush ruleset 2>/dev/null || true
           iptables -F 2>/dev/null || true
           iptables -P INPUT ACCEPT 2>/dev/null || true
@@ -44,7 +67,10 @@
           systemctl restart ssh || systemctl restart sshd || true
 
     - name: Cancel existing rollback timer if present
-      shell: systemctl cancel ipsec-rollback || true
+      shell: |
+        systemctl cancel ipsec-rollback || true
+        systemctl stop ipsec-rollback.timer ipsec-rollback.service 2>/dev/null || true
+        systemctl reset-failed ipsec-rollback.timer ipsec-rollback.service 2>/dev/null || true
       args:
         executable: /bin/bash
       failed_when: false

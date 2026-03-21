@@ -1,4 +1,14 @@
 - name: restart ipsec
   systemd:
-    name: strongswan-starter
+    name: "{{ ipsec_service_unit }}"
     state: restarted
+
+- name: reload swanctl configuration
+  command: swanctl --load-all
+  when: ipsec_backend == 'swanctl'
+
+- name: restart xfrm interface
+  systemd:
+    name: ipsec-xfrm.service
+    state: restarted
+  failed_when: false

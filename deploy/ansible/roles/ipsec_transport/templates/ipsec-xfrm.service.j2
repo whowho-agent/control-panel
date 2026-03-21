@@ -1,11 +1,13 @@
 [Unit]
 Description=Route-based IPSec XFRM interface for {{ ipsec_interface_name }}
-After=network-online.target strongswan-starter.service
+After=network-online.target {{ ipsec_service_unit }}.service
 Wants=network-online.target
+PartOf={{ ipsec_service_unit }}.service
 
 [Service]
 Type=oneshot
 ExecStart=/usr/local/sbin/ipsec-xfrm.sh
+ExecStop=/usr/local/sbin/ipsec-xfrm-cleanup.sh
 RemainAfterExit=yes
 
 [Install]

@@ -1,10 +1,31 @@
-- name: Install strongSwan and iproute2
+- name: Install strongSwan/iproute2 packages for starter backend
   apt:
     name:
       - strongswan
       - iproute2
     state: present
     update_cache: true
+  when: ipsec_backend == 'starter'
+
+- name: Install strongSwan/iproute2 packages for swanctl backend
+  apt:
+    name:
+      - strongswan-swanctl
+      - charon-systemd
+      - strongswan-libcharon
+      - iproute2
+    state: present
+    update_cache: true
+  when: ipsec_backend == 'swanctl'
+
+- name: Ensure /etc/swanctl exists for swanctl backend
+  file:
+    path: /etc/swanctl
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  when: ipsec_backend == 'swanctl'
 
 - name: Ensure dedicated route table is present
   lineinfile:
@@ -20,6 +41,7 @@
     owner: root
     group: root
     mode: '0755'
+  notify: restart xfrm interface
 
 - name: Install XFRM systemd unit
   template:
@@ -28,10 +50,33 @@
     owner: root
     group: root
     mode: '0644'
+  notify: restart xfrm interface
+
+- name: Install XFRM cleanup helper script
+  copy:
+    dest: /usr/local/sbin/ipsec-xfrm-cleanup.sh
+    owner: root
+    group: root
+    mode: '0755'
+    content: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+      IFACE="{{ ipsec_interface_name }}"
+      RULE_PRIORITY="220"
+      {% for destination in ipsec_policy_route_destinations %}
+      ip rule del to "{{ destination }}/32" table "{{ ipsec_route_table }}" priority "$RULE_PRIORITY" 2>/dev/null || true
+      ip route del "{{ destination }}/32" dev "$IFACE" table "{{ ipsec_route_table }}" 2>/dev/null || true
+      {% endfor %}
+      ip route del "{{ ipsec_remote_tunnel_ip }}/32" dev "$IFACE" table "{{ ipsec_route_table }}" 2>/dev/null || true
+      ip addr flush dev "$IFACE" 2>/dev/null || true
+      ip link del "$IFACE" 2>/dev/null || true
 
 - name: Reload systemd for XFRM unit
   systemd:
     daemon_reload: true
+
+- name: Flush handlers after prepare stage
+  meta: flush_handlers
 
 - name: Note that rollback should be prepared before live IPSec testing
   debug:
