@@ -360,6 +360,21 @@ def test_get_topology_health_marks_ipsec_active_after_private_cutover(tmp_path: 
     assert relay_repo.calls == 4
 
 
+def test_get_topology_health_marks_ipsec_degraded_when_private_relay_is_unreachable(tmp_path: Path) -> None:
+    service, frontend_repo, _, relay_repo = build_service(tmp_path)
+    service.transport_mode = "ipsec"
+    frontend_repo.config["outbounds"][0]["settings"]["vnext"][0]["address"] = "10.10.10.2"
+    relay_repo.reachable = False
+
+    result = service.get_topology_health()
+
+    assert result.transport_mode == "ipsec"
+    assert result.ipsec_expected is True
+    assert result.ipsec_active is False
+    assert result.transport_label == "IPSec degraded: private relay unreachable"
+    assert result.relay_reachable is False
+
+
 def test_list_clients_marks_client_offline_when_last_seen_is_old(tmp_path: Path) -> None:
     service, _, meta_repo, _ = build_service(tmp_path)
     old_seen_at = (datetime.now(timezone.utc) - timedelta(minutes=30)).isoformat().replace("+00:00", "Z")

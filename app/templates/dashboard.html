@@ -24,7 +24,7 @@
     <div>Public relay host: <code>{{ topology.relay_public_host or '-' }}</code></div>
     <div>Private relay host: <code>{{ topology.relay_private_host or '-' }}</code></div>
     {% if topology.ipsec_expected %}
-    <div>IPSec status: <span class="badge {{ 'ok' if topology.ipsec_active else 'warn' }}">{{ 'private path active' if topology.ipsec_active else 'configured, no private cutover yet' }}</span></div>
+    <div>IPSec status: <span class="badge {{ 'ok' if topology.ipsec_active else 'warn' }}">{{ 'private path active' if topology.ipsec_active else 'private relay unreachable or cutover incomplete' }}</span></div>
     <div>Tunnel: <code>{{ topology.ipsec_local_tunnel_ip or '-' }}</code> → <code>{{ topology.ipsec_remote_tunnel_ip or '-' }}</code></div>
     {% else %}
     <div>Path: <span class="badge ok">public direct relay</span></div>

@@ -214,3 +214,40 @@ def test_dashboard_and_config_show_ipsec_transport_context() -> None:
     assert "Expected private relay" in config.text
     assert "10.10.10.2" in config.text
     app.dependency_overrides.clear()
+
+
+def test_dashboard_shows_ipsec_degraded_label_when_private_path_is_down() -> None:
+    class FakeIpsecDegradedUiService(FakeUiService):
+        def get_topology_health(self):
+            return TopologyHealthResult(
+                frontend_service="configured",
+                relay_service="active",
+                relay_reachable=False,
+                expected_egress_ip="72.56.109.197",
+                client_count=1,
+                online_count=1,
+                egress_probe_ok=True,
+                observed_egress_ip="72.56.109.197",
+                frontend_ready=True,
+                frontend_readiness_status="ready",
+                transport_mode="ipsec",
+                transport_label="IPSec degraded: private relay unreachable",
+                relay_public_host="72.56.109.197",
+                relay_private_host="10.10.10.2",
+                active_relay_host="10.10.10.2",
+                active_relay_port=9443,
+                ipsec_expected=True,
+                ipsec_active=False,
+                ipsec_local_tunnel_ip="10.10.10.1",
+                ipsec_remote_tunnel_ip="10.10.10.2",
+            )
+
+    app.dependency_overrides[get_xray_frontend_service] = lambda: FakeIpsecDegradedUiService()
+    client = TestClient(app)
+
+    dashboard = client.get("/", auth=("admin", "change-me"))
+
+    assert dashboard.status_code == 200
+    assert "IPSec degraded: private relay unreachable" in dashboard.text
+    assert "private relay unreachable or cutover incomplete" in dashboard.text
+    app.dependency_overrides.clear()

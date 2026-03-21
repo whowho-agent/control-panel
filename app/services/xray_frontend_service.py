@@ -341,6 +341,8 @@ class XrayFrontendService:
             return "Direct public relay"
         if ipsec_active:
             return "IPSec private relay"
+        if self.relay_private_host:
+            return "IPSec degraded: private relay unreachable"
         return "IPSec configured, waiting for private cutover"
 
     def _parse_activity(self) -> dict[str, dict[str, Any]]:
