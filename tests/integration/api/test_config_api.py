@@ -17,7 +17,7 @@ class FakeConfigService:
             target="mitigator.ru:443",
             relay_host="72.56.109.197",
             relay_port=9443,
-            relay_uuid="relay-uuid",
+            relay_uuid="00000000-0000-0000-0000-000000000001",
         )
 
     def update_frontend_config(self, command):
@@ -36,7 +36,11 @@ class FakeConfigService:
         )
 
     def get_relay_config(self):
-        return RelayConfigResult(host="72.56.109.197", port=9443, uuid="relay-uuid")
+        return RelayConfigResult(
+            host="72.56.109.197",
+            port=9443,
+            uuid="00000000-0000-0000-0000-000000000001",
+        )
 
     def update_relay_config(self, command):
         return RelayConfigResult(
@@ -86,7 +90,7 @@ def test_update_frontend_config_returns_updated_payload() -> None:
             "fingerprint": "chrome",
             "target": "example.org:443",
             "spider_x": "/health",
-            "short_ids": ["sid-1"],
+            "short_ids": ["aaaaaaaaaaaaaaaa"],
             "relay_host": "10.0.0.2",
             "relay_port": 9556,
         },
@@ -109,7 +113,7 @@ def test_get_relay_config_returns_runtime_values() -> None:
 
     assert response.status_code == 200
     assert response.json()["host"] == "72.56.109.197"
-    assert response.json()["uuid"] == "relay-uuid"
+    assert response.json()["uuid"] == "00000000-0000-0000-0000-000000000001"
     app.dependency_overrides.clear()
 
 
@@ -123,12 +127,12 @@ def test_update_relay_config_returns_updated_payload() -> None:
         json={
             "public_host": "203.0.113.5",
             "listen_port": 9777,
-            "relay_uuid": "relay-new",
+            "relay_uuid": "00000000-0000-0000-0000-000000000002",
         },
     )
 
     assert response.status_code == 200
     assert response.json()["host"] == "203.0.113.5"
     assert response.json()["port"] == 9777
-    assert response.json()["uuid"] == "relay-new"
+    assert response.json()["uuid"] == "00000000-0000-0000-0000-000000000002"
     app.dependency_overrides.clear()

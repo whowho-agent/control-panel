@@ -101,29 +101,36 @@ class XrayFrontendService:
         return clients
 
     def create_client(self, command: CreateFrontendClientCommand) -> FrontendClientUriResult:
+        name = command.name.strip()
+        host = command.host.strip()
+        if not name:
+            raise ValueError("client_name_empty")
+        if not host:
+            raise ValueError("client_host_empty")
+
         config = self.frontend_repo.read_config()
         frontend = self.frontend_repo.get_frontend_config()
         inbound = next(item for item in config["inbounds"] if item.get("tag") == "frontend-in")
         reality = inbound["streamSettings"]["realitySettings"]
         existing_emails = {
-            item.get("email", "")
+            item.get("email", "").strip().casefold()
             for item in inbound["settings"].get("clients", [])
             if item.get("email")
         }
-        if command.name in existing_emails:
-            raise ValueError(f"client_name_exists:{command.name}")
+        if name.casefold() in existing_emails:
+            raise ValueError(f"client_name_exists:{name}")
 
         client_id = str(uuid.uuid4())
         short_id = self._generate_short_id(frontend.short_ids)
         reality.setdefault("shortIds", [])
         if short_id not in reality["shortIds"]:
             reality["shortIds"].append(short_id)
-        inbound["settings"].setdefault("clients", []).append({"id": client_id, "email": command.name})
+        inbound["settings"].setdefault("clients", []).append({"id": client_id, "email": name})
         self.frontend_repo.write_config(config)
 
         meta = self.meta_repo.read()
         meta.setdefault("clients", {})[client_id] = {
-            "name": command.name,
+            "name": name,
             "short_id": short_id,
             "created_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
             "last_seen": "",
@@ -132,9 +139,9 @@ class XrayFrontendService:
         self.meta_repo.write(meta)
         self.frontend_repo.restart_frontend()
 
-        client = FrontendClient(id=client_id, name=command.name, short_id=short_id, email=command.name)
+        client = FrontendClient(id=client_id, name=name, short_id=short_id, email=name)
         frontend.short_ids = reality["shortIds"]
-        uri = self.build_client_uri(command.host, client, frontend)
+        uri = self.build_client_uri(host, client, frontend)
         return FrontendClientUriResult(client=client, uri=uri)
 
     def delete_client(self, client_id: str) -> bool:

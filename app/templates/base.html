@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>{{ title or 'Xray Control Plane' }}</title>
   <style>
-    :root { --bg:#0b1020; --panel:#121933; --panel2:#182240; --text:#e9eefc; --muted:#9aa8d6; --ok:#25c27a; --bad:#f05d5e; --line:#2b3561; --link:#7ab8ff; }
+    :root { --bg:#0b1020; --panel:#121933; --panel2:#182240; --text:#e9eefc; --muted:#9aa8d6; --ok:#25c27a; --bad:#f05d5e; --warn:#f0b24d; --line:#2b3561; --link:#7ab8ff; }
     * { box-sizing:border-box; }
     body { margin:0; background:linear-gradient(180deg,#0b1020,#0d1428); color:var(--text); font-family:Inter,system-ui,sans-serif; }
     .wrap { max-width:1380px; margin:0 auto; padding:24px; }
@@ -19,6 +19,9 @@
     .ok { background:rgba(37,194,122,.15); color:#7ef0b0; }
     .bad { background:rgba(240,93,94,.15); color:#ff9b9b; }
     .warn { background:rgba(240,178,77,.15); color:#ffd28a; }
+    .flash { margin-bottom:16px; padding:12px 14px; border-radius:12px; border:1px solid var(--line); }
+    .flash.ok { background:rgba(37,194,122,.12); color:#7ef0b0; }
+    .flash.bad { background:rgba(240,93,94,.12); color:#ffb2b2; }
     .topology { display:grid; grid-template-columns:1fr 120px 1fr 120px 1fr; gap:10px; align-items:center; }
     .node { background:var(--panel2); border:1px solid var(--line); border-radius:14px; padding:16px; min-height:120px; }
     .arrow { text-align:center; color:var(--muted); font-size:22px; }
@@ -39,6 +42,12 @@
       <a href="/clients">Clients</a>
       <a href="/config">Config</a>
     </div>
+    {% if success_message %}
+    <div class="flash ok">{{ success_message }}</div>
+    {% endif %}
+    {% if error_message %}
+    <div class="flash bad">{{ error_message }}</div>
+    {% endif %}
     {% block content %}{% endblock %}
   </div>
 </body>

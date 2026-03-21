@@ -1,9 +1,31 @@
-from pydantic import BaseModel
+import re
+from uuid import UUID
+
+from pydantic import BaseModel, Field, field_validator
+
+_SHORT_ID_RE = re.compile(r"^[0-9a-f]{1,16}$")
+_HOST_RE = re.compile(r"^[A-Za-z0-9.-]+$")
+_TARGET_RE = re.compile(r"^[A-Za-z0-9.-]+:\d{1,5}$")
 
 
 class CreateClientInput(BaseModel):
-    name: str
-    host: str
+    name: str = Field(min_length=1, max_length=128)
+    host: str = Field(min_length=1, max_length=255)
+
+    @field_validator("name", "host")
+    @classmethod
+    def validate_trimmed_text(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("must not be empty")
+        return value
+
+    @field_validator("host")
+    @classmethod
+    def validate_host(cls, value: str) -> str:
+        if not _HOST_RE.fullmatch(value):
+            raise ValueError("must be a valid hostname or IPv4 address")
+        return value
 
 
 class ClientOutput(BaseModel):
@@ -55,17 +77,82 @@ class RelayConfigOutput(BaseModel):
 
 
 class UpdateFrontendConfigInput(BaseModel):
-    port: int
-    server_name: str
-    fingerprint: str
-    target: str
-    spider_x: str
-    short_ids: list[str]
-    relay_host: str
-    relay_port: int
+    port: int = Field(ge=1, le=65535)
+    server_name: str = Field(min_length=1, max_length=255)
+    fingerprint: str = Field(min_length=1, max_length=64)
+    target: str = Field(min_length=1, max_length=255)
+    spider_x: str = Field(min_length=1, max_length=255)
+    short_ids: list[str] = Field(min_length=1)
+    relay_host: str = Field(min_length=1, max_length=255)
+    relay_port: int = Field(ge=1, le=65535)
+
+    @field_validator("server_name", "fingerprint", "target", "spider_x", "relay_host")
+    @classmethod
+    def validate_non_empty_trimmed_text(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("must not be empty")
+        return value
+
+    @field_validator("server_name", "relay_host")
+    @classmethod
+    def validate_host(cls, value: str) -> str:
+        if not _HOST_RE.fullmatch(value):
+            raise ValueError("must be a valid hostname or IPv4 address")
+        return value
+
+    @field_validator("target")
+    @classmethod
+    def validate_target(cls, value: str) -> str:
+        if not _TARGET_RE.fullmatch(value):
+            raise ValueError("must be in host:port format")
+        host, port = value.rsplit(":", 1)
+        if not _HOST_RE.fullmatch(host) or not (1 <= int(port) <= 65535):
+            raise ValueError("must be in host:port format")
+        return value
+
+    @field_validator("short_ids")
+    @classmethod
+    def validate_short_ids(cls, value: list[str]) -> list[str]:
+        normalized = []
+        seen = set()
+        for item in value:
+            current = item.strip().lower()
+            if not current:
+                continue
+            if not _SHORT_ID_RE.fullmatch(current):
+                raise ValueError("short_ids must contain 1-16 lowercase hex chars")
+            if current in seen:
+                raise ValueError("short_ids must be unique")
+            seen.add(current)
+            normalized.append(current)
+        if not normalized:
+            raise ValueError("short_ids must not be empty")
+        return normalized
 
 
 class UpdateRelayConfigInput(BaseModel):
-    public_host: str
-    listen_port: int
-    relay_uuid: str
+    public_host: str = Field(min_length=1, max_length=255)
+    listen_port: int = Field(ge=1, le=65535)
+    relay_uuid: str = Field(min_length=1, max_length=64)
+
+    @field_validator("public_host", "relay_uuid")
+    @classmethod
+    def validate_non_empty_trimmed_text(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("must not be empty")
+        return value
+
+    @field_validator("public_host")
+    @classmethod
+    def validate_public_host(cls, value: str) -> str:
+        if not _HOST_RE.fullmatch(value):
+            raise ValueError("must be a valid hostname or IPv4 address")
+        return value
+
+    @field_validator("relay_uuid")
+    @classmethod
+    def validate_uuid(cls, value: str) -> str:
+        UUID(value)
+        return value
