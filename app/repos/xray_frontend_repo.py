@@ -26,11 +26,13 @@ class XrayFrontendRepo:
         return self._load_json_file(self.config_path)
 
     def write_config(self, config: dict) -> None:
+        self._ensure_runtime_files(config)
         self.config_path.write_text(json.dumps(config, indent=2) + "\n")
 
     def apply_config(self, config: dict) -> FrontendApplyResult:
         previous_config = self.config_path.read_text() if self.config_path.exists() else ""
         rendered = json.dumps(config, indent=2) + "\n"
+        self._ensure_runtime_files(config)
         validation = self.validate_config_text(rendered)
         if not validation.preflight_ok:
             return validation
@@ -131,6 +133,8 @@ class XrayFrontendRepo:
 
     def restart_frontend(self) -> FrontendApplyResult:
         try:
+            if self.config_path.exists():
+                self._ensure_runtime_files(self.read_config())
             restart = subprocess.run(
                 self._systemctl_command("restart"),
                 check=False,

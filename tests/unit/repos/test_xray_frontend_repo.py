@@ -248,3 +248,32 @@ def test_write_config_ensures_runtime_log_files_exist(tmp_path: Path) -> None:
     assert config_path.exists()
     assert access_log_path.exists()
     assert error_log_path.exists()
+
+
+def test_apply_config_ensures_runtime_log_files_before_restart(tmp_path: Path) -> None:
+    config_path = tmp_path / "nested" / "config.json"
+    access_log_path = tmp_path / "nested" / "access.log"
+    error_log_path = tmp_path / "nested" / "error.log"
+    xray_path = tmp_path / "xray"
+    xray_path.write_text("#!/usr/bin/env bash\nexit 0\n")
+    xray_path.chmod(0o755)
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+    config_path.write_text('{"log": {"error": "%s"}, "inbounds": [], "outbounds": []}\n' % error_log_path)
+
+    repo = XrayFrontendRepo(
+        config_path=str(config_path),
+        access_log_path=str(access_log_path),
+        service_name="xray-frontend",
+        xray_binary_path=str(xray_path),
+        use_nsenter=False,
+    )
+
+    with patch.object(repo, "validate_config_text") as validate, patch.object(repo, "restart_frontend") as restart:
+        from app.domain.xray_frontend import FrontendApplyResult
+        validate.return_value = FrontendApplyResult(True, False, False, "validated", "ok")
+        restart.return_value = FrontendApplyResult(True, True, True, "ready", "ok")
+
+        repo.apply_config({"log": {"error": str(error_log_path)}, "inbounds": [], "outbounds": []})
+
+    assert access_log_path.exists()
+    assert error_log_path.exists()
