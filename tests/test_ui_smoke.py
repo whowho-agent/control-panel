@@ -14,6 +14,8 @@ class FakeService:
             expected_egress_ip="72.56.109.197",
             client_count=1,
             online_count=1,
+            frontend_ready=True,
+            frontend_readiness_status="ready",
         )
 
     def get_frontend_config(self):
@@ -56,6 +58,7 @@ def test_dashboard_renders_with_basic_auth() -> None:
     assert "Dashboard" in response.text
     assert "72.56.109.197" in response.text
     assert "testserver" in response.text
+    assert "Readiness" in response.text
     app.dependency_overrides.clear()
 
     app.dependency_overrides.clear()

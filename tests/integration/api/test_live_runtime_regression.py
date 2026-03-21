@@ -92,6 +92,8 @@ def test_create_client_updates_live_runtime_files(tmp_path: Path, monkeypatch) -
 
         if cmd[:2] == [str(xray_path), "x25519"]:
             return Result(stdout="Public key: derived-pub\n")
+        if cmd[:2] == [str(xray_path), "run"]:
+            return Result(stdout="configuration ok\n")
         if cmd[:2] == ["nsenter", "-t"]:
             return Result(stdout="active\n")
         raise AssertionError(f"unexpected subprocess.run command: {cmd}")

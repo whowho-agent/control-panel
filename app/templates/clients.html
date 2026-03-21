@@ -2,6 +2,7 @@
 {% block content %}
 <h1>Clients</h1>
 <div class="card" style="margin-bottom:16px;">
+  <div class="small" style="margin-bottom:10px;">Client mutations use the same safe apply workflow: write candidate config, validate it, restart the frontend, then confirm readiness.</div>
   <form method="post" action="/clients">
     <div style="display:grid;grid-template-columns:1fr 200px;gap:12px;">
       <input type="text" name="name" placeholder="xray-client" required />
@@ -34,7 +35,7 @@
             <button type="submit">Enable</button>
           </form>
           {% endif %}
-          <form method="post" action="/clients/{{ row.client.id }}/delete" onsubmit="return confirm('Delete client?')" style="display:inline-block;">
+          <form method="post" action="/clients/{{ row.client.id }}/delete" onsubmit="return confirm('Delete client? This will validate, restart, and verify readiness before the change is kept.')" style="display:inline-block;">
             <button class="danger" type="submit">Delete</button>
           </form>
         </td>

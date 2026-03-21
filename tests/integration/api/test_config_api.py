@@ -1,5 +1,5 @@
 from app.api.deps import get_xray_frontend_service
-from app.domain.xray_frontend import FrontendConfigResult, RelayConfigResult, TopologyHealthResult
+from app.domain.xray_frontend import FrontendApplyResult, FrontendConfigResult, RelayConfigResult, TopologyHealthResult
 from app.main import app
 from tests.conftest import create_test_client
 
@@ -35,6 +35,9 @@ class FakeConfigService:
             relay_uuid="relay-uuid",
         )
 
+    def validate_frontend_config(self, command):
+        return FrontendApplyResult(True, False, False, "validated", "Config validation passed")
+
     def get_relay_config(self):
         return RelayConfigResult(
             host="72.56.109.197",
@@ -49,6 +52,9 @@ class FakeConfigService:
             uuid=command.relay_uuid,
         )
 
+    def validate_relay_config(self, command):
+        return FrontendApplyResult(True, False, False, "validated", "Config validation passed")
+
     def get_topology_health(self):
         return TopologyHealthResult(
             frontend_service="configured",
@@ -59,6 +65,8 @@ class FakeConfigService:
             online_count=0,
             egress_probe_ok=True,
             observed_egress_ip="72.56.109.197",
+            frontend_ready=True,
+            frontend_readiness_status="ready",
         )
 
 
@@ -74,6 +82,31 @@ def test_get_frontend_config_returns_runtime_values() -> None:
     assert response.status_code == 200
     assert response.json()["port"] == 9444
     assert response.json()["relay_host"] == "72.56.109.197"
+    app.dependency_overrides.clear()
+
+
+def test_validate_frontend_config_returns_preflight_status() -> None:
+    app.dependency_overrides[get_xray_frontend_service] = lambda: FakeConfigService()
+    client = create_test_client()
+
+    response = client.post(
+        "/api/xray-frontend/config/frontend/validate",
+        auth=("admin", "change-me"),
+        json={
+            "port": 9555,
+            "server_name": "example.org",
+            "fingerprint": "chrome",
+            "target": "example.org:443",
+            "spider_x": "/health",
+            "short_ids": ["aaaaaaaaaaaaaaaa"],
+            "relay_host": "10.0.0.2",
+            "relay_port": 9556,
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["preflight_ok"] is True
+    assert response.json()["status"] == "validated"
     app.dependency_overrides.clear()
 
 
@@ -114,6 +147,26 @@ def test_get_relay_config_returns_runtime_values() -> None:
     assert response.status_code == 200
     assert response.json()["host"] == "72.56.109.197"
     assert response.json()["uuid"] == "00000000-0000-0000-0000-000000000001"
+    app.dependency_overrides.clear()
+
+
+def test_validate_relay_config_returns_preflight_status() -> None:
+    app.dependency_overrides[get_xray_frontend_service] = lambda: FakeConfigService()
+    client = create_test_client()
+
+    response = client.post(
+        "/api/xray-frontend/config/relay/validate",
+        auth=("admin", "change-me"),
+        json={
+            "public_host": "203.0.113.5",
+            "listen_port": 9777,
+            "relay_uuid": "00000000-0000-0000-0000-000000000002",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["preflight_ok"] is True
+    assert response.json()["status"] == "validated"
     app.dependency_overrides.clear()
 
 

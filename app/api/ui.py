@@ -8,7 +8,7 @@ from pydantic import ValidationError
 
 from app.api.deps import get_xray_frontend_service, require_basic_auth
 from app.api.schemas import CreateClientInput, UpdateFrontendConfigInput, UpdateRelayConfigInput
-from app.domain.xray_frontend import CreateFrontendClientCommand
+from app.domain.xray_frontend import ControlPlaneError, CreateFrontendClientCommand
 from app.domain.xray_frontend_config import (
     UpdateFrontendConfigCommand,
     UpdateRelayConfigCommand,
@@ -21,6 +21,21 @@ templates = Jinja2Templates(directory="app/templates")
 
 def _query_message(request: Request, key: str) -> str:
     return request.query_params.get(key, "").strip()
+
+
+def _humanize_message(message: str) -> str:
+    mapping = {
+        "client_created": "Client created and frontend is ready.",
+        "client_deleted": "Client deleted and frontend is ready.",
+        "client_enabled": "Client enabled and frontend is ready.",
+        "client_disabled": "Client disabled and frontend is ready.",
+        "frontend_config_saved": "Frontend config applied successfully. Preflight passed, restart succeeded, readiness is green.",
+        "relay_config_saved": "Relay config applied successfully. Preflight passed, restart succeeded, readiness is green.",
+        "frontend_config_valid": "Frontend candidate config passed preflight validation. No restart was performed.",
+        "relay_config_valid": "Relay candidate config passed preflight validation. No restart was performed.",
+        "client_not_found": "Client not found.",
+    }
+    return mapping.get(message, message)
 
 
 def _redirect_with_message(path: str, *, success: str = "", error: str = "") -> RedirectResponse:
@@ -49,8 +64,8 @@ def dashboard(
             "gateway_host": request.url.hostname or "localhost",
             "gateway_label": request.url.hostname or "gateway",
             "egress_label": frontend.relay_host or "egress",
-            "success_message": _query_message(request, "success"),
-            "error_message": _query_message(request, "error"),
+            "success_message": _humanize_message(_query_message(request, "success")),
+            "error_message": _humanize_message(_query_message(request, "error")),
         },
     )
 
@@ -72,8 +87,8 @@ def clients_page(
         "clients.html",
         {
             "rows": rows,
-            "success_message": _query_message(request, "success"),
-            "error_message": _query_message(request, "error"),
+            "success_message": _humanize_message(_query_message(request, "success")),
+            "error_message": _humanize_message(_query_message(request, "error")),
         },
     )
 
@@ -108,7 +123,7 @@ def create_client(
     try:
         payload = CreateClientInput(name=name, host=host)
         service.create_client(CreateFrontendClientCommand(name=payload.name, host=payload.host))
-    except (ValidationError, ValueError) as exc:
+    except (ValidationError, ControlPlaneError) as exc:
         return _redirect_with_message("/clients", error=str(exc))
     return _redirect_with_message("/clients", success="client_created")
 
@@ -119,7 +134,10 @@ def delete_client(
     _: str = Depends(require_basic_auth),
     service: XrayFrontendService = Depends(get_xray_frontend_service),
 ) -> RedirectResponse:
-    deleted = service.delete_client(client_id)
+    try:
+        deleted = service.delete_client(client_id)
+    except ControlPlaneError as exc:
+        return _redirect_with_message("/clients", error=str(exc))
     if not deleted:
         return _redirect_with_message("/clients", error="client_not_found")
     return _redirect_with_message("/clients", success="client_deleted")
@@ -131,7 +149,10 @@ def enable_client(
     _: str = Depends(require_basic_auth),
     service: XrayFrontendService = Depends(get_xray_frontend_service),
 ) -> RedirectResponse:
-    updated = service.set_client_enabled(client_id, True)
+    try:
+        updated = service.set_client_enabled(client_id, True)
+    except ControlPlaneError as exc:
+        return _redirect_with_message("/clients", error=str(exc))
     if not updated:
         return _redirect_with_message("/clients", error="client_not_found")
     return _redirect_with_message("/clients", success="client_enabled")
@@ -143,7 +164,10 @@ def disable_client(
     _: str = Depends(require_basic_auth),
     service: XrayFrontendService = Depends(get_xray_frontend_service),
 ) -> RedirectResponse:
-    updated = service.set_client_enabled(client_id, False)
+    try:
+        updated = service.set_client_enabled(client_id, False)
+    except ControlPlaneError as exc:
+        return _redirect_with_message("/clients", error=str(exc))
     if not updated:
         return _redirect_with_message("/clients", error="client_not_found")
     return _redirect_with_message("/clients", success="client_disabled")
@@ -163,10 +187,42 @@ def config_page(
         {
             "frontend": frontend,
             "relay": relay,
-            "success_message": _query_message(request, "success"),
-            "error_message": _query_message(request, "error"),
+            "success_message": _humanize_message(_query_message(request, "success")),
+            "error_message": _humanize_message(_query_message(request, "error")),
         },
     )
+
+
+@router.post("/config/frontend/validate")
+def validate_frontend_config(
+    frontend_port: int = Form(...),
+    frontend_sni: str = Form(...),
+    frontend_fp: str = Form(...),
+    frontend_target: str = Form(...),
+    frontend_spider: str = Form(...),
+    frontend_shortids: str = Form(...),
+    relay_host: str = Form(...),
+    relay_port: int = Form(...),
+    _: str = Depends(require_basic_auth),
+    service: XrayFrontendService = Depends(get_xray_frontend_service),
+) -> RedirectResponse:
+    try:
+        payload = UpdateFrontendConfigInput(
+            port=frontend_port,
+            server_name=frontend_sni,
+            fingerprint=frontend_fp,
+            target=frontend_target,
+            spider_x=frontend_spider,
+            short_ids=[item.strip() for item in frontend_shortids.split(",") if item.strip()],
+            relay_host=relay_host,
+            relay_port=relay_port,
+        )
+        result = service.validate_frontend_config(UpdateFrontendConfigCommand(**payload.model_dump()))
+    except (ValidationError, ControlPlaneError) as exc:
+        return _redirect_with_message("/config", error=str(exc))
+    if not result.preflight_ok:
+        return _redirect_with_message("/config", error=result.message)
+    return _redirect_with_message("/config", success="frontend_config_valid")
 
 
 @router.post("/config/frontend")
@@ -194,9 +250,31 @@ def update_frontend_config(
             relay_port=relay_port,
         )
         service.update_frontend_config(UpdateFrontendConfigCommand(**payload.model_dump()))
-    except (ValidationError, ValueError) as exc:
+    except (ValidationError, ControlPlaneError) as exc:
         return _redirect_with_message("/config", error=str(exc))
     return _redirect_with_message("/config", success="frontend_config_saved")
+
+
+@router.post("/config/relay/validate")
+def validate_relay_config(
+    relay_public_host: str = Form(...),
+    relay_listen_port: int = Form(...),
+    relay_uuid: str = Form(...),
+    _: str = Depends(require_basic_auth),
+    service: XrayFrontendService = Depends(get_xray_frontend_service),
+) -> RedirectResponse:
+    try:
+        payload = UpdateRelayConfigInput(
+            public_host=relay_public_host,
+            listen_port=relay_listen_port,
+            relay_uuid=relay_uuid,
+        )
+        result = service.validate_relay_config(UpdateRelayConfigCommand(**payload.model_dump()))
+    except (ValidationError, ControlPlaneError) as exc:
+        return _redirect_with_message("/config", error=str(exc))
+    if not result.preflight_ok:
+        return _redirect_with_message("/config", error=result.message)
+    return _redirect_with_message("/config", success="relay_config_valid")
 
 
 @router.post("/config/relay")
@@ -214,6 +292,6 @@ def update_relay_config(
             relay_uuid=relay_uuid,
         )
         service.update_relay_config(UpdateRelayConfigCommand(**payload.model_dump()))
-    except (ValidationError, ValueError) as exc:
+    except (ValidationError, ControlPlaneError) as exc:
         return _redirect_with_message("/config", error=str(exc))
     return _redirect_with_message("/config", success="relay_config_saved")

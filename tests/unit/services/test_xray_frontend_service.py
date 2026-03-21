@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from app.domain.xray_frontend import CreateFrontendClientCommand, FrontendConfigResult, RelayConfigResult
+from app.domain.xray_frontend import CreateFrontendClientCommand, FrontendApplyResult, FrontendConfigResult, RelayConfigResult
 from app.domain.xray_frontend_config import UpdateFrontendConfigCommand, UpdateRelayConfigCommand
 from app.services.xray_frontend_service import XrayFrontendService
 
@@ -11,12 +11,24 @@ class FakeFrontendRepo:
         self.config = config
         self.access_log_path = access_log_path
         self.restart_calls = 0
+        self.apply_result = FrontendApplyResult(True, True, True, "ready", "Frontend service is active")
+        self.validate_result = FrontendApplyResult(True, False, False, "validated", "Config validation passed")
 
     def read_config(self) -> dict:
         return self.config
 
     def write_config(self, config: dict) -> None:
         self.config = config
+
+    def apply_config(self, config: dict) -> FrontendApplyResult:
+        self.config = config
+        if self.apply_result.restarted:
+            self.restart_calls += 1
+        return self.apply_result
+
+    def validate_config(self, config: dict) -> FrontendApplyResult:
+        self.config = config
+        return self.validate_result
 
     def get_frontend_config(self) -> FrontendConfigResult:
         inbound = next(item for item in self.config["inbounds"] if item["tag"] == "frontend-in")
@@ -45,11 +57,11 @@ class FakeFrontendRepo:
             uuid=frontend.relay_uuid,
         )
 
-    def restart_frontend(self) -> None:
-        self.restart_calls += 1
-
     def get_frontend_service_status(self) -> str:
         return "configured"
+
+    def get_frontend_readiness(self) -> FrontendApplyResult:
+        return FrontendApplyResult(True, False, True, "ready", "Frontend service is ready")
 
 
 class FakeMetaRepo:
@@ -198,8 +210,8 @@ def test_create_client_rejects_duplicate_email_name(tmp_path: Path) -> None:
     try:
         service.create_client(CreateFrontendClientCommand(name="t2", host="panel.example.com"))
         assert False, "expected duplicate client name to be rejected"
-    except ValueError as exc:
-        assert str(exc) == "client_name_exists:t2"
+    except Exception as exc:
+        assert str(exc) == "Client 't2' already exists"
 
 
 def test_create_client_rejects_duplicate_email_name_case_insensitively(tmp_path: Path) -> None:
@@ -210,8 +222,8 @@ def test_create_client_rejects_duplicate_email_name_case_insensitively(tmp_path:
     try:
         service.create_client(CreateFrontendClientCommand(name=" existing ", host="panel.example.com"))
         assert False, "expected duplicate client name to be rejected"
-    except ValueError as exc:
-        assert str(exc) == "client_name_exists:existing"
+    except Exception as exc:
+        assert str(exc) == "Client 'existing' already exists"
 
 
 def test_delete_client_removes_client_from_config_and_meta(tmp_path: Path) -> None:
@@ -243,6 +255,27 @@ def test_set_client_enabled_sets_true(tmp_path: Path) -> None:
 
     assert updated is True
     assert frontend_repo.config["inbounds"][0]["settings"]["clients"][0]["enable"] is True
+
+
+def test_validate_frontend_config_runs_preflight_without_restart(tmp_path: Path) -> None:
+    service, frontend_repo, _, _ = build_service(tmp_path)
+
+    result = service.validate_frontend_config(
+        UpdateFrontendConfigCommand(
+            port=9555,
+            server_name="example.org",
+            fingerprint="chrome",
+            target="example.org:443",
+            spider_x="/health",
+            short_ids=["cccccccccccccccc", "dddddddddddddddd"],
+            relay_host="10.0.0.2",
+            relay_port=9556,
+        )
+    )
+
+    assert result.preflight_ok is True
+    assert result.status == "validated"
+    assert frontend_repo.restart_calls == 0
 
 
 def test_update_frontend_config_updates_runtime_config(tmp_path: Path) -> None:
@@ -294,6 +327,7 @@ def test_get_topology_health_uses_cached_value_within_ttl(tmp_path: Path) -> Non
     assert second.relay_service == "active"
     assert first.egress_probe_ok is True
     assert first.observed_egress_ip == "72.56.109.197"
+    assert first.frontend_ready is True
     assert second.relay_service == "active"
     assert relay_repo.calls == 3
 

@@ -1,7 +1,7 @@
 from fastapi.testclient import TestClient
 
 from app.api.deps import get_xray_frontend_service
-from app.domain.xray_frontend import FrontendClient, FrontendConfigResult, RelayConfigResult, TopologyHealthResult
+from app.domain.xray_frontend import FrontendApplyResult, FrontendClient, FrontendConfigResult, RelayConfigResult, TopologyHealthResult
 from app.main import app
 
 
@@ -16,6 +16,8 @@ class FakeUiService:
             online_count=1,
             egress_probe_ok=True,
             observed_egress_ip="72.56.109.197",
+            frontend_ready=True,
+            frontend_readiness_status="ready",
         )
 
     def get_frontend_config(self):
@@ -65,6 +67,12 @@ class FakeUiService:
     def update_relay_config(self, command):
         return self.get_relay_config()
 
+    def validate_frontend_config(self, command):
+        return FrontendApplyResult(True, False, False, "validated", "Config validation passed")
+
+    def validate_relay_config(self, command):
+        return FrontendApplyResult(True, False, False, "validated", "Config validation passed")
+
 
 def test_clients_page_renders_with_basic_auth() -> None:
     app.dependency_overrides[get_xray_frontend_service] = lambda: FakeUiService()
@@ -76,6 +84,7 @@ def test_clients_page_renders_with_basic_auth() -> None:
     assert "test-client" in response.text
     assert "activity-unattributed" in response.text
     assert "QR" in response.text
+    assert "safe apply workflow" in response.text
     app.dependency_overrides.clear()
 
 
@@ -88,6 +97,7 @@ def test_config_page_renders_with_basic_auth() -> None:
     assert response.status_code == 200
     assert "Config Editor" in response.text
     assert "Relay config" in response.text
+    assert "Validate only" in response.text
     app.dependency_overrides.clear()
 
 

@@ -45,6 +45,15 @@ class CreateClientOutput(BaseModel):
     uri: str
 
 
+class ApplyConfigOutput(BaseModel):
+    preflight_ok: bool
+    restarted: bool
+    ready: bool
+    status: str
+    message: str = ""
+    rollback_performed: bool = False
+
+
 class TopologyHealthOutput(BaseModel):
     frontend_service: str
     relay_service: str
@@ -54,6 +63,8 @@ class TopologyHealthOutput(BaseModel):
     online_count: int
     egress_probe_ok: bool = False
     observed_egress_ip: str = ""
+    frontend_ready: bool = False
+    frontend_readiness_status: str = "unknown"
 
 
 class FrontendConfigOutput(BaseModel):

@@ -1,8 +1,10 @@
 import json
 import subprocess
+import tempfile
+import time
 from pathlib import Path
 
-from app.domain.xray_frontend import FrontendConfigResult, RelayConfigResult
+from app.domain.xray_frontend import FrontendApplyResult, FrontendConfigResult, RelayConfigResult
 
 
 class XrayFrontendRepo:
@@ -25,6 +27,77 @@ class XrayFrontendRepo:
 
     def write_config(self, config: dict) -> None:
         self.config_path.write_text(json.dumps(config, indent=2) + "\n")
+
+    def apply_config(self, config: dict) -> FrontendApplyResult:
+        previous_config = self.config_path.read_text() if self.config_path.exists() else ""
+        rendered = json.dumps(config, indent=2) + "\n"
+        validation = self.validate_config_text(rendered)
+        if not validation.preflight_ok:
+            return validation
+
+        self.config_path.write_text(rendered)
+        restart_result = self.restart_frontend()
+        if restart_result.ready:
+            return restart_result
+
+        rollback_performed = False
+        if previous_config:
+            self.config_path.write_text(previous_config)
+            rollback_result = self.restart_frontend()
+            rollback_performed = rollback_result.ready
+
+        return FrontendApplyResult(
+            preflight_ok=True,
+            restarted=restart_result.restarted,
+            ready=False,
+            status="rollback-restored" if rollback_performed else "restart-failed",
+            message=restart_result.message,
+            rollback_performed=rollback_performed,
+        )
+
+    def validate_config(self, config: dict) -> FrontendApplyResult:
+        return self.validate_config_text(json.dumps(config, indent=2) + "\n")
+
+    def validate_config_text(self, config_text: str) -> FrontendApplyResult:
+        try:
+            with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as tmp:
+                tmp.write(config_text)
+                tmp_path = Path(tmp.name)
+            result = subprocess.run(
+                [self.xray_binary_path, "run", "-test", "-config", str(tmp_path)],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+        except FileNotFoundError:
+            return FrontendApplyResult(
+                preflight_ok=False,
+                restarted=False,
+                ready=False,
+                status="validator-missing",
+                message=f"Xray validator not found at {self.xray_binary_path}",
+            )
+        finally:
+            if 'tmp_path' in locals() and tmp_path.exists():
+                tmp_path.unlink()
+
+        stderr = (result.stderr or "").strip()
+        stdout = (result.stdout or "").strip()
+        if result.returncode == 0:
+            return FrontendApplyResult(
+                preflight_ok=True,
+                restarted=False,
+                ready=False,
+                status="validated",
+                message="Config validation passed",
+            )
+        return FrontendApplyResult(
+            preflight_ok=False,
+            restarted=False,
+            ready=False,
+            status="validation-failed",
+            message=stderr or stdout or "Xray rejected the candidate config",
+        )
 
     def get_frontend_config(self) -> FrontendConfigResult:
         config = self.read_config()
@@ -56,16 +129,48 @@ class XrayFrontendRepo:
             uuid=frontend.relay_uuid,
         )
 
-    def restart_frontend(self) -> None:
+    def restart_frontend(self) -> FrontendApplyResult:
         try:
-            subprocess.run(
+            restart = subprocess.run(
                 self._systemctl_command("restart"),
-                check=True,
+                check=False,
                 capture_output=True,
                 text=True,
             )
         except FileNotFoundError:
-            return
+            return FrontendApplyResult(
+                preflight_ok=True,
+                restarted=False,
+                ready=False,
+                status="systemctl-missing",
+                message="systemctl is not available in this runtime",
+            )
+        if restart.returncode != 0:
+            return FrontendApplyResult(
+                preflight_ok=True,
+                restarted=False,
+                ready=False,
+                status="restart-failed",
+                message=(restart.stderr or restart.stdout or "systemctl restart failed").strip(),
+            )
+
+        readiness = self.wait_until_ready()
+        return FrontendApplyResult(
+            preflight_ok=True,
+            restarted=True,
+            ready=readiness[0],
+            status=readiness[1],
+            message=readiness[2],
+        )
+
+    def wait_until_ready(self, attempts: int = 5, delay_seconds: float = 0.4) -> tuple[bool, str, str]:
+        last_status = "unknown"
+        for _ in range(attempts):
+            last_status = self.get_frontend_service_status()
+            if last_status == "active":
+                return True, "ready", "Frontend service is active"
+            time.sleep(delay_seconds)
+        return False, "not-ready", f"Frontend service did not become active after restart (last status: {last_status})"
 
     def get_frontend_service_status(self) -> str:
         try:
@@ -83,6 +188,18 @@ class XrayFrontendRepo:
         if self.config_path.exists() and Path(self.xray_binary_path).exists():
             return "configured"
         return "unknown"
+
+    def get_frontend_readiness(self) -> FrontendApplyResult:
+        status = self.get_frontend_service_status()
+        ready = status == "active"
+        message = "Frontend service is ready" if ready else f"Frontend service is not ready (status: {status})"
+        return FrontendApplyResult(
+            preflight_ok=True,
+            restarted=False,
+            ready=ready,
+            status="ready" if ready else status,
+            message=message,
+        )
 
     def derive_public_key(self, private_key: str) -> str:
         if not private_key:

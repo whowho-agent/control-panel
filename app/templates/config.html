@@ -1,6 +1,10 @@
 {% extends 'base.html' %}
 {% block content %}
 <h1>Config Editor</h1>
+<div class="card" style="margin-bottom:16px;">
+  <div><strong>Safe apply workflow</strong></div>
+  <div class="small" style="margin-top:6px;">Validate candidate config first. Save performs preflight validation, then restart, then readiness check. If restart fails, control-plane attempts rollback to the previous config.</div>
+</div>
 <div class="grid">
   <div class="card" style="grid-column:span 7;">
     <h2 style="margin-top:0">Frontend config</h2>
@@ -22,7 +26,10 @@
         <label>Short IDs (comma separated)</label>
         <input name="frontend_shortids" value="{{ frontend.short_ids | join(',') }}" />
       </div>
-      <div style="margin-top:16px;"><button type="submit">Save frontend config</button></div>
+      <div style="margin-top:16px;display:flex;gap:12px;">
+        <button type="submit" formaction="/config/frontend/validate">Validate only</button>
+        <button type="submit">Validate + save + restart</button>
+      </div>
     </form>
   </div>
   <div class="card" style="grid-column:span 5;">
@@ -31,7 +38,10 @@
       <div><label>Relay host</label><input name="relay_public_host" value="{{ relay.host }}" /></div>
       <div style="margin-top:12px;"><label>Relay port</label><input name="relay_listen_port" value="{{ relay.port }}" /></div>
       <div style="margin-top:12px;"><label>Relay UUID</label><input name="relay_uuid" value="{{ relay.uuid }}" /></div>
-      <div style="margin-top:16px;"><button type="submit">Save relay config</button></div>
+      <div style="margin-top:16px;display:flex;gap:12px;">
+        <button type="submit" formaction="/config/relay/validate">Validate only</button>
+        <button type="submit">Validate + save + restart</button>
+      </div>
     </form>
   </div>
 </div>

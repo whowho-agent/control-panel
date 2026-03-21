@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 @dataclass(slots=True)
@@ -49,6 +49,16 @@ class RelayConfigResult:
 
 
 @dataclass(slots=True)
+class FrontendApplyResult:
+    preflight_ok: bool
+    restarted: bool
+    ready: bool
+    status: str
+    message: str = ""
+    rollback_performed: bool = False
+
+
+@dataclass(slots=True)
 class TopologyHealthResult:
     frontend_service: str
     relay_service: str
@@ -58,3 +68,16 @@ class TopologyHealthResult:
     online_count: int
     egress_probe_ok: bool = False
     observed_egress_ip: str = ""
+    frontend_ready: bool = False
+    frontend_readiness_status: str = "unknown"
+
+
+@dataclass(slots=True)
+class ControlPlaneError(Exception):
+    code: str
+    message: str
+    status_code: int = 400
+    details: dict[str, str] = field(default_factory=dict)
+
+    def __str__(self) -> str:
+        return self.message

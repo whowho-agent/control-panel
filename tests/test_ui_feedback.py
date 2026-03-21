@@ -1,7 +1,7 @@
 from fastapi.testclient import TestClient
 
 from app.api.deps import get_xray_frontend_service
-from app.domain.xray_frontend import FrontendClient, FrontendConfigResult, RelayConfigResult, TopologyHealthResult
+from app.domain.xray_frontend import FrontendApplyResult, FrontendClient, FrontendConfigResult, RelayConfigResult, TopologyHealthResult
 from app.main import app
 
 
@@ -16,6 +16,8 @@ class FakeUiService:
             online_count=1,
             egress_probe_ok=True,
             observed_egress_ip="72.56.109.197",
+            frontend_ready=True,
+            frontend_readiness_status="ready",
         )
 
     def get_frontend_config(self):
@@ -48,7 +50,8 @@ class FakeUiService:
 
     def create_client(self, command):
         if command.name == "dupe":
-            raise ValueError("client_name_exists:dupe")
+            from app.domain.xray_frontend import ControlPlaneError
+            raise ControlPlaneError("client_name_exists", "Client 'dupe' already exists", status_code=409)
         return None
 
     def delete_client(self, client_id: str):
@@ -63,6 +66,12 @@ class FakeUiService:
     def update_relay_config(self, command):
         return self.get_relay_config()
 
+    def validate_frontend_config(self, command):
+        return FrontendApplyResult(True, False, False, "validated", "Config validation passed")
+
+    def validate_relay_config(self, command):
+        return FrontendApplyResult(True, False, False, "validated", "Config validation passed")
+
 
 def test_clients_page_renders_flash_messages() -> None:
     app.dependency_overrides[get_xray_frontend_service] = lambda: FakeUiService()
@@ -71,7 +80,7 @@ def test_clients_page_renders_flash_messages() -> None:
     response = client.get("/clients?success=client_created&error=boom", auth=("admin", "change-me"))
 
     assert response.status_code == 200
-    assert "client_created" in response.text
+    assert "Client created and frontend is ready." in response.text
     assert "boom" in response.text
     app.dependency_overrides.clear()
 
@@ -88,7 +97,7 @@ def test_create_client_redirects_with_error_message_on_duplicate() -> None:
     )
 
     assert response.status_code == 303
-    assert response.headers["location"] == "/clients?error=client_name_exists%3Adupe"
+    assert response.headers["location"] == "/clients?error=Client+%27dupe%27+already+exists"
     app.dependency_overrides.clear()
 
 
@@ -109,4 +118,29 @@ def test_update_relay_config_redirects_with_error_on_invalid_uuid() -> None:
 
     assert response.status_code == 303
     assert response.headers["location"].startswith("/config?error=")
+    app.dependency_overrides.clear()
+
+
+def test_validate_frontend_config_redirects_with_success_message() -> None:
+    app.dependency_overrides[get_xray_frontend_service] = lambda: FakeUiService()
+    client = TestClient(app)
+
+    response = client.post(
+        "/config/frontend/validate",
+        auth=("admin", "change-me"),
+        data={
+            "frontend_port": 9444,
+            "frontend_sni": "mitigator.ru",
+            "frontend_fp": "firefox",
+            "frontend_target": "mitigator.ru:443",
+            "frontend_spider": "/",
+            "frontend_shortids": "aaaaaaaaaaaaaaaa",
+            "relay_host": "72.56.109.197",
+            "relay_port": 9443,
+        },
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/config?success=frontend_config_valid"
     app.dependency_overrides.clear()

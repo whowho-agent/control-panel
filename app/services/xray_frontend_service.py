@@ -6,6 +6,7 @@ from typing import Any
 from urllib.parse import quote, urlencode
 
 from app.domain.xray_frontend import (
+    ControlPlaneError,
     CreateFrontendClientCommand,
     FrontendClient,
     FrontendClientUriResult,
@@ -104,9 +105,9 @@ class XrayFrontendService:
         name = command.name.strip()
         host = command.host.strip()
         if not name:
-            raise ValueError("client_name_empty")
+            raise ControlPlaneError("client_name_empty", "Client name must not be empty")
         if not host:
-            raise ValueError("client_host_empty")
+            raise ControlPlaneError("client_host_empty", "Client host must not be empty")
 
         config = self.frontend_repo.read_config()
         frontend = self.frontend_repo.get_frontend_config()
@@ -118,7 +119,7 @@ class XrayFrontendService:
             if item.get("email")
         }
         if name.casefold() in existing_emails:
-            raise ValueError(f"client_name_exists:{name}")
+            raise ControlPlaneError("client_name_exists", f"Client '{name}' already exists", status_code=409)
 
         client_id = str(uuid.uuid4())
         short_id = self._generate_short_id(frontend.short_ids)
@@ -126,7 +127,13 @@ class XrayFrontendService:
         if short_id not in reality["shortIds"]:
             reality["shortIds"].append(short_id)
         inbound["settings"].setdefault("clients", []).append({"id": client_id, "email": name})
-        self.frontend_repo.write_config(config)
+        apply_result = self.frontend_repo.apply_config(config)
+        if not apply_result.ready:
+            raise ControlPlaneError(
+                "client_create_apply_failed",
+                f"Client was not created because frontend apply failed: {apply_result.message}",
+                status_code=409,
+            )
 
         meta = self.meta_repo.read()
         meta.setdefault("clients", {})[client_id] = {
@@ -137,7 +144,6 @@ class XrayFrontendService:
             "source_ip": "",
         }
         self.meta_repo.write(meta)
-        self.frontend_repo.restart_frontend()
 
         client = FrontendClient(id=client_id, name=name, short_id=short_id, email=name)
         frontend.short_ids = reality["shortIds"]
@@ -155,11 +161,16 @@ class XrayFrontendService:
         ]
         if len(inbound["settings"]["clients"]) == before:
             return False
-        self.frontend_repo.write_config(config)
+        apply_result = self.frontend_repo.apply_config(config)
+        if not apply_result.ready:
+            raise ControlPlaneError(
+                "client_delete_apply_failed",
+                f"Client delete aborted because frontend apply failed: {apply_result.message}",
+                status_code=409,
+            )
         meta = self.meta_repo.read()
         meta.get("clients", {}).pop(client_id, None)
         self.meta_repo.write(meta)
-        self.frontend_repo.restart_frontend()
         return True
 
     def set_client_enabled(self, client_id: str, enabled: bool) -> bool:
@@ -172,8 +183,13 @@ class XrayFrontendService:
         if target is None:
             return False
         target["enable"] = enabled
-        self.frontend_repo.write_config(config)
-        self.frontend_repo.restart_frontend()
+        apply_result = self.frontend_repo.apply_config(config)
+        if not apply_result.ready:
+            raise ControlPlaneError(
+                "client_toggle_apply_failed",
+                f"Client state change aborted because frontend apply failed: {apply_result.message}",
+                status_code=409,
+            )
         return True
 
     def get_topology_health(self) -> TopologyHealthResult:
@@ -185,6 +201,7 @@ class XrayFrontendService:
 
         clients = self.list_clients()
         observed_egress_ip = self.relay_repo.probe_observed_public_ip()
+        readiness = self.frontend_repo.get_frontend_readiness()
         result = TopologyHealthResult(
             frontend_service=self.frontend_repo.get_frontend_service_status(),
             relay_service=self.relay_repo.get_remote_service_status(),
@@ -194,6 +211,8 @@ class XrayFrontendService:
             online_count=sum(1 for item in clients if item.status == "online"),
             egress_probe_ok=bool(observed_egress_ip) and observed_egress_ip == self.expected_egress_ip,
             observed_egress_ip=observed_egress_ip,
+            frontend_ready=readiness.ready,
+            frontend_readiness_status=readiness.status,
         )
         self._topology_cache = {
             "value": result,
@@ -207,7 +226,37 @@ class XrayFrontendService:
     def get_relay_config(self):
         return self.frontend_repo.get_relay_config_from_frontend()
 
+    def validate_frontend_config(self, command: UpdateFrontendConfigCommand):
+        config = self.read_candidate_frontend_config(command)
+        return self.frontend_repo.validate_config(config)
+
+    def validate_relay_config(self, command: UpdateRelayConfigCommand):
+        config = self.read_candidate_relay_config(command)
+        return self.frontend_repo.validate_config(config)
+
     def update_frontend_config(self, command: UpdateFrontendConfigCommand):
+        config = self.read_candidate_frontend_config(command)
+        apply_result = self.frontend_repo.apply_config(config)
+        if not apply_result.ready:
+            raise ControlPlaneError(
+                "frontend_apply_failed",
+                f"Frontend config was not applied: {apply_result.message}",
+                status_code=409,
+            )
+        return self.frontend_repo.get_frontend_config()
+
+    def update_relay_config(self, command: UpdateRelayConfigCommand):
+        config = self.read_candidate_relay_config(command)
+        apply_result = self.frontend_repo.apply_config(config)
+        if not apply_result.ready:
+            raise ControlPlaneError(
+                "relay_apply_failed",
+                f"Relay config was not applied: {apply_result.message}",
+                status_code=409,
+            )
+        return self.frontend_repo.get_relay_config_from_frontend()
+
+    def read_candidate_frontend_config(self, command: UpdateFrontendConfigCommand) -> dict:
         config = self.frontend_repo.read_config()
         inbound = next(item for item in config["inbounds"] if item.get("tag") == "frontend-in")
         outbound = next(item for item in config["outbounds"] if item.get("tag") == "to-relay")
@@ -224,19 +273,15 @@ class XrayFrontendService:
         reality["shortIds"] = command.short_ids
         outbound["settings"]["vnext"][0]["address"] = command.relay_host
         outbound["settings"]["vnext"][0]["port"] = command.relay_port
-        self.frontend_repo.write_config(config)
-        self.frontend_repo.restart_frontend()
-        return self.frontend_repo.get_frontend_config()
+        return config
 
-    def update_relay_config(self, command: UpdateRelayConfigCommand):
+    def read_candidate_relay_config(self, command: UpdateRelayConfigCommand) -> dict:
         config = self.frontend_repo.read_config()
         outbound = next(item for item in config["outbounds"] if item.get("tag") == "to-relay")
         outbound["settings"]["vnext"][0]["address"] = command.public_host
         outbound["settings"]["vnext"][0]["port"] = command.listen_port
         outbound["settings"]["vnext"][0]["users"][0]["id"] = command.relay_uuid
-        self.frontend_repo.write_config(config)
-        self.frontend_repo.restart_frontend()
-        return self.frontend_repo.get_relay_config_from_frontend()
+        return config
 
     def build_client_uri(self, host: str, client: FrontendClient, frontend_config) -> str:
         query = {

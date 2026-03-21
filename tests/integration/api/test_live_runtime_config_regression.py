@@ -91,6 +91,8 @@ def test_update_frontend_config_updates_live_runtime_and_restarts(tmp_path, monk
 
         if cmd[:2] == [str(xray_path), "x25519"]:
             return Result(stdout="Public key: derived-pub\n")
+        if cmd[:2] == [str(xray_path), "run"]:
+            return Result(stdout="configuration ok\n")
         if cmd[:2] == ["nsenter", "-t"]:
             return Result(stdout="active\n")
         raise AssertionError(f"unexpected subprocess.run command: {cmd}")
