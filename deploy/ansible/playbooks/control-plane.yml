@@ -80,6 +80,8 @@
         done
         echo "timed out waiting for apt/dpkg locks or unattended-upgrades" >&2
         exit 1
+      args:
+        executable: /bin/bash
       changed_when: false
 
     - name: Install Docker engine and compose plugin
