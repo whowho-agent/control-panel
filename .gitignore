@@ -1,0 +1,15 @@
+# Secrets — never commit
+deploy/ansible/group_vars/all/vault.yml
+deploy/ansible/group_vars/all.yml
+deploy/ansible/inventory.ini
+.env
+
+# Runtime artifacts
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+runtime/
+
+# Local tooling
+.venv/

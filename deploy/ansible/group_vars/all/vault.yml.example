@@ -1,0 +1,7 @@
+xray_ipsec_psk: replace-me-psk
+xray_frontend_reality_private_key: replace-me
+xray_frontend_short_ids: "replace-me-short-id-1,replace-me-short-id-2"
+xray_relay_uuid: replace-me-uuid
+xray_relay_host: egress.example.com
+xray_expected_egress_ip: 203.0.113.10
+xray_admin_password: replace-me
