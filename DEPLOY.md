@@ -122,6 +122,10 @@ ansible-playbook -i deploy/ansible/inventory.ini \
   deploy/ansible/playbooks/control-plane.yml
 ```
 
+> **Important (ipsec mode):** `ipsec.yml` must run before `gateway.yml`.
+> Gateway waits for the relay on `10.10.10.2:9443` (tunnel IP) — if IPSec tunnel is not up yet, it will timeout.
+> If `xray_transport_mode: direct`, skip `ipsec.yml`.
+
 Or use the IPSec rollout playbook (handles staging + rollback automatically):
 
 ```bash
