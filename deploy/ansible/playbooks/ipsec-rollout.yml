@@ -2,12 +2,13 @@
 # Staged IPSec rollout orchestration
 #
 # This playbook performs a safe, reversible IPSec deployment:
-#   1. Arm a timed rollback on both nodes (default 10 min)
-#   2. Apply IPSec tunnel (strongSwan) on both nodes
-#   3. Re-deploy gateway frontend via IPSec tunnel
-#   4. Re-deploy control-plane via IPSec tunnel
-#   5. Validate app-path is using the private tunnel
-#   6. Cancel rollback timers
+#   1. Deploy egress relay (xray-relay service)
+#   2. Arm a timed rollback on both nodes (default 10 min)
+#   3. Apply IPSec tunnel (strongSwan) on both nodes
+#   4. Re-deploy gateway frontend via IPSec tunnel
+#   5. Re-deploy control-plane via IPSec tunnel
+#   6. Validate app-path is using the private tunnel
+#   7. Cancel rollback timers
 #
 # If any step fails, the rollback timer on the remote nodes will
 # automatically restore network state after rollback_timeout_minutes.
@@ -19,6 +20,8 @@
 # Prerequisites:
 #   - xray_transport_mode: ipsec  (in group_vars/all/vars.yml)
 #   - ipsec_manage_service_cutover: false  (set to true to let ipsec role restart services)
+
+- import_playbook: egress.yml
 
 - import_playbook: prepare-ipsec-rollback.yml
 
