@@ -16,6 +16,8 @@
       - { src: "{{ playbook_dir }}/../../bootstrap/bootstrap-control-plane.sh", dest: "{{ project_root }}/deploy/bootstrap/bootstrap-control-plane.sh", mode: "0755" }
       - { src: "{{ playbook_dir }}/../../bootstrap/lib.sh", dest: "{{ project_root }}/deploy/bootstrap/lib.sh" }
   tasks:
+    - include_tasks: ../tasks/mask_auto_updates.yml
+
     - include_tasks: ../tasks/bootstrap_project_dirs.yml
 
     - include_tasks: ../tasks/copy_bootstrap_assets.yml

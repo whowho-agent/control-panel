@@ -11,9 +11,12 @@
       - "{{ project_root }}/deploy/env"
     deploy_bootstrap_assets:
       - { src: "{{ playbook_dir }}/../../bootstrap/bootstrap-gateway.sh", dest: "{{ project_root }}/deploy/bootstrap/bootstrap-gateway.sh", mode: "0755" }
+      - { src: "{{ playbook_dir }}/../../bootstrap/restore_clients.py", dest: "{{ project_root }}/deploy/bootstrap/restore_clients.py", mode: "0644" }
       - { src: "{{ playbook_dir }}/../../bootstrap/lib.sh", dest: "{{ project_root }}/deploy/bootstrap/lib.sh", mode: "0644" }
       - { src: "{{ playbook_dir }}/../../templates/xray-frontend.config.json.template", dest: "{{ project_root }}/deploy/templates/xray-frontend.config.json.template", mode: "0644" }
   tasks:
+    - include_tasks: ../tasks/mask_auto_updates.yml
+
     - include_tasks: ../tasks/bootstrap_project_dirs.yml
 
     - include_tasks: ../tasks/copy_bootstrap_assets.yml

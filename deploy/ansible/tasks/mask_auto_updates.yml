@@ -1,0 +1,7 @@
+- name: Stop and mask unattended-upgrades and apt timers to prevent apt lock contention
+  shell: |
+    systemctl stop unattended-upgrades apt-daily apt-daily-upgrade 2>/dev/null || true
+    systemctl mask unattended-upgrades apt-daily apt-daily-upgrade 2>/dev/null || true
+  args:
+    executable: /bin/bash
+  changed_when: false

@@ -13,6 +13,8 @@
       - { src: "{{ playbook_dir }}/../../bootstrap/lib.sh", dest: "{{ project_root }}/deploy/bootstrap/lib.sh", mode: "0644" }
       - { src: "{{ playbook_dir }}/../../templates/xray-relay.config.json.template", dest: "{{ project_root }}/deploy/templates/xray-relay.config.json.template", mode: "0644" }
   tasks:
+    - include_tasks: ../tasks/mask_auto_updates.yml
+
     - include_tasks: ../tasks/bootstrap_project_dirs.yml
 
     - include_tasks: ../tasks/copy_bootstrap_assets.yml
