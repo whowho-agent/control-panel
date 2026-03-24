@@ -44,6 +44,9 @@ sudo ROOT_DIR="$ROOT_DIR" TCP_WAIT_TIMEOUT="$TCP_WAIT_TIMEOUT" TCP_WAIT_INTERVAL
 
 log_phase "render and apply gateway config"
 envsubst < "$TEMPLATE" | sudo tee /opt/xray-frontend/config.json >/dev/null
+sudo python3 "$ROOT_DIR/deploy/bootstrap/restore_clients.py" \
+  /opt/xray-frontend/config.json \
+  /opt/xray-frontend/clients-meta.json
 
 sudo tee /etc/systemd/system/xray-frontend.service >/dev/null <<'EOF'
 [Unit]
