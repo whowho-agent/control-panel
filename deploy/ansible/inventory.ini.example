@@ -1,5 +1,5 @@
 [gateway]
-gateway-1 ansible_host=gateway.example.com ansible_user=deploy
+gateway-1 ansible_host=gateway.example.com ansible_user=deploy ansible_port=22 ansible_ssh_private_key_file=/path/to/ssh_key ansible_python_interpreter=/usr/bin/python3
 
 [egress]
-egress-1 ansible_host=egress.example.com ansible_user=deploy
+egress-1 ansible_host=egress.example.com ansible_user=deploy ansible_port=22 ansible_ssh_private_key_file=/path/to/ssh_key ansible_python_interpreter=/usr/bin/python3

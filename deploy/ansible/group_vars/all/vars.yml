@@ -1,5 +1,5 @@
 deploy_project_root: /opt/control-panel
-xray_transport_mode: direct  # direct|ipsec
+xray_transport_mode: ipsec  # direct|ipsec
 xray_ipsec_gateway_tunnel_ip: 10.10.10.1
 xray_ipsec_egress_tunnel_ip: 10.10.10.2
 xray_frontend_port: 9444
@@ -8,7 +8,7 @@ xray_frontend_target: mitigator.ru:443
 xray_frontend_fingerprint: firefox
 xray_relay_private_host: 10.10.10.2
 xray_relay_port: 9443
-xray_relay_ssh_user: rabotyaga
-xray_relay_ssh_key_source: /home/rabotyaga/.ssh/id_ed25519_egress_deploy
-xray_relay_ssh_private_key_local_path: /root/.ssh/id_ed25519_openclaw_github_deploy
+xray_relay_ssh_user: claude-agent
+xray_relay_ssh_key_source: /home/claude-agent/.ssh/id_ed25519_egress_deploy
+xray_relay_ssh_private_key_local_path: /tmp/claude_agent_key
 xray_admin_user: admin
