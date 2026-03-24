@@ -4,15 +4,30 @@
 <div class="card" style="margin-bottom:16px;">
   <div class="small" style="margin-bottom:10px;">Client mutations use the same safe apply workflow: write candidate config, validate it, restart the frontend, then confirm readiness.</div>
   <form method="post" action="/clients">
-    <div style="display:grid;grid-template-columns:1fr 200px;gap:12px;">
-      <input type="text" name="name" placeholder="xray-client" required />
+    <div style="display:grid;grid-template-columns:1fr 180px;gap:12px;align-items:end;">
+      <div>
+        <label for="client-name">Client name</label>
+        <input id="client-name" type="text" name="name" placeholder="xray-client" required />
+      </div>
       <button type="submit">Create client</button>
     </div>
   </form>
 </div>
 <div class="card">
   <table>
-    <thead><tr><th>Name</th><th>Status</th><th>Enabled</th><th>Last seen</th><th>Source IP</th><th>UUID</th><th>Short ID</th><th>URI</th><th>QR</th><th>Action</th></tr></thead>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Status</th>
+        <th>Enabled</th>
+        <th>Last seen</th>
+        <th>Source IP</th>
+        <th>UUID</th>
+        <th>Short ID</th>
+        <th>Links</th>
+        <th>Action</th>
+      </tr>
+    </thead>
     <tbody>
     {% for row in rows %}
       <tr>
@@ -21,21 +36,24 @@
         <td><span class="badge {{ 'ok' if row.client.enabled else 'bad' }}">{{ 'enabled' if row.client.enabled else 'disabled' }}</span></td>
         <td>{{ row.client.last_seen or '-' }}</td>
         <td>{{ row.client.source_ip or '-' }}</td>
-        <td><code>{{ row.client.id }}</code></td>
+        <td><code title="{{ row.client.id }}">{{ row.client.id[:8] }}…</code></td>
         <td><code>{{ row.client.short_id }}</code></td>
-        <td><a href="{{ row.uri }}">URI</a></td>
-        <td><a href="/clients/{{ row.client.id }}/qr" target="_blank">QR</a></td>
-        <td>
+        <td style="white-space:nowrap;">
+          <a href="{{ row.uri }}">URI</a>
+          &nbsp;·&nbsp;
+          <a href="/clients/{{ row.client.id }}/qr" target="_blank">QR</a>
+        </td>
+        <td style="white-space:nowrap;">
           {% if row.client.enabled %}
-          <form method="post" action="/clients/{{ row.client.id }}/disable" style="display:inline-block;margin-right:8px;">
-            <button type="submit">Disable</button>
+          <form method="post" action="/clients/{{ row.client.id }}/disable" style="display:inline-block;margin-right:6px;">
+            <button class="secondary" type="submit">Disable</button>
           </form>
           {% else %}
-          <form method="post" action="/clients/{{ row.client.id }}/enable" style="display:inline-block;margin-right:8px;">
+          <form method="post" action="/clients/{{ row.client.id }}/enable" style="display:inline-block;margin-right:6px;">
             <button type="submit">Enable</button>
           </form>
           {% endif %}
-          <form method="post" action="/clients/{{ row.client.id }}/delete" onsubmit="return confirm('Delete client? This will validate, restart, and verify readiness before the change is kept.')" style="display:inline-block;">
+          <form method="post" action="/clients/{{ row.client.id }}/delete" onsubmit="return confirm('Delete client {{ row.client.name }}? This will validate, restart, and verify readiness before the change is kept.')" style="display:inline-block;">
             <button class="danger" type="submit">Delete</button>
           </form>
         </td>

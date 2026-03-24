@@ -7,47 +7,64 @@
   <div class="card" style="grid-column:span 3"><div class="small">Health</div><div class="kpi">{{ topology.frontend_service }}</div></div>
   <div class="card" style="grid-column:span 3"><div class="small">Transport</div><div class="kpi">{{ topology.transport_mode }}</div></div>
   <div class="card" style="grid-column:span 12">
-    <h2 style="margin-top:0">Topology</h2>
+    <h2>Topology</h2>
     <div class="topology">
-      <div class="node"><div class="small">Client Edge</div><div class="kpi">Internet Clients</div><div><span class="badge ok">traffic present</span></div></div>
+      <div class="node">
+        <div class="small">Client Edge</div>
+        <div style="font-weight:600;margin:6px 0 8px;">Internet Clients</div>
+        <span class="badge ok">traffic present</span>
+      </div>
       <div class="arrow">→</div>
-      <div class="node"><div class="small">Gateway Node</div><div class="kpi">{{ gateway_label }}</div><div>Health: <span class="badge {{ 'ok' if topology.frontend_service in ['active', 'configured'] else 'bad' }}">{{ topology.frontend_service }}</span></div><div>Readiness: <span class="badge {{ 'ok' if topology.frontend_ready else 'bad' }}">{{ topology.frontend_readiness_status }}</span></div><div class="small">Entry {{ gateway_host }}:{{ frontend.port }}</div></div>
+      <div class="node">
+        <div class="small">Gateway Node</div>
+        <div style="font-weight:600;margin:6px 0 8px;">{{ gateway_label }}</div>
+        <div style="margin-bottom:4px;">Health: <span class="badge {{ 'ok' if topology.frontend_service in ['active', 'configured'] else 'bad' }}">{{ topology.frontend_service }}</span></div>
+        <div style="margin-bottom:4px;">Readiness: <span class="badge {{ 'ok' if topology.frontend_ready else 'bad' }}">{{ topology.frontend_readiness_status }}</span></div>
+        <div class="small">Entry {{ gateway_host }}:{{ frontend.port }}</div>
+      </div>
       <div class="arrow">{{ '⇢ IPSec ⇢' if topology.ipsec_expected else '→' }}</div>
-      <div class="node"><div class="small">Egress Node</div><div class="kpi">{{ egress_label }}</div><div>Relay: <span class="badge {{ 'ok' if topology.relay_reachable else 'bad' }}">{{ 'reachable' if topology.relay_reachable else 'unreachable' }}</span></div><div class="small">Expected egress {{ topology.expected_egress_ip }}</div></div>
+      <div class="node">
+        <div class="small">Egress Node</div>
+        <div style="font-weight:600;margin:6px 0 8px;">{{ egress_label }}</div>
+        <div style="margin-bottom:4px;">Relay: <span class="badge {{ 'ok' if topology.relay_reachable else 'bad' }}">{{ 'reachable' if topology.relay_reachable else 'unreachable' }}</span></div>
+        <div class="small">Expected egress {{ topology.expected_egress_ip }}</div>
+      </div>
     </div>
-    <div class="small" style="margin-top:10px;">Health means the control-plane process answered. Readiness means the managed frontend service is actually active and able to serve traffic.</div>
+    <div class="small" style="margin-top:12px;">Health means the control-plane process answered. Readiness means the managed frontend service is actually active and able to serve traffic.</div>
   </div>
   <div class="card" style="grid-column:span 6">
-    <h2 style="margin-top:0">Transport path</h2>
-    <div>Mode: <span class="badge {{ 'ok' if topology.ipsec_active or not topology.ipsec_expected else 'warn' }}">{{ topology.transport_label }}</span></div>
-    <div>Active relay target: <code>{{ topology.active_relay_host }}:{{ topology.active_relay_port }}</code></div>
-    <div>Public relay host: <code>{{ topology.relay_public_host or '-' }}</code></div>
-    <div>Private relay host: <code>{{ topology.relay_private_host or '-' }}</code></div>
+    <h2>Transport path</h2>
+    <div style="margin-bottom:6px;">Mode: <span class="badge {{ 'ok' if topology.ipsec_active or not topology.ipsec_expected else 'warn' }}">{{ topology.transport_label }}</span></div>
+    <div style="margin-bottom:4px;">Active relay target: <code>{{ topology.active_relay_host }}:{{ topology.active_relay_port }}</code></div>
+    <div style="margin-bottom:4px;">Public relay host: <code>{{ topology.relay_public_host or '-' }}</code></div>
+    <div style="margin-bottom:4px;">Private relay host: <code>{{ topology.relay_private_host or '-' }}</code></div>
     {% if topology.ipsec_expected %}
-    <div>IPSec status: <span class="badge {{ 'ok' if topology.ipsec_active else 'warn' }}">{{ 'private path active' if topology.ipsec_active else 'private relay unreachable or cutover incomplete' }}</span></div>
+    <div style="margin-bottom:4px;">IPSec status: <span class="badge {{ 'ok' if topology.ipsec_active else 'warn' }}">{{ 'private path active' if topology.ipsec_active else 'private relay unreachable or cutover incomplete' }}</span></div>
     <div>Tunnel: <code>{{ topology.ipsec_local_tunnel_ip or '-' }}</code> → <code>{{ topology.ipsec_remote_tunnel_ip or '-' }}</code></div>
     {% else %}
     <div>Path: <span class="badge ok">public direct relay</span></div>
     {% endif %}
   </div>
   <div class="card" style="grid-column:span 6">
-    <h2 style="margin-top:0">Frontend config</h2>
-    <div>Port: <code>{{ frontend.port }}</code></div>
-    <div>SNI: <code>{{ frontend.server_name }}</code></div>
-    <div>Target: <code>{{ frontend.target }}</code></div>
-    <div>Relay host: <code>{{ frontend.relay_host }}:{{ frontend.relay_port }}</code></div>
+    <h2>Frontend config</h2>
+    <div style="margin-bottom:4px;">Port: <code>{{ frontend.port }}</code></div>
+    <div style="margin-bottom:4px;">SNI: <code>{{ frontend.server_name }}</code></div>
+    <div style="margin-bottom:4px;">Target: <code>{{ frontend.target }}</code></div>
+    <div style="margin-bottom:4px;">Relay host: <code>{{ frontend.relay_host }}:{{ frontend.relay_port }}</code></div>
     <div>Public key: <code>{{ frontend.public_key }}</code></div>
   </div>
   <div class="card" style="grid-column:span 6">
-    <h2 style="margin-top:0">Synthetic egress probe</h2>
-    <div>Probe: <span class="badge {{ 'ok' if topology.egress_probe_ok else 'bad' }}">{{ 'ok' if topology.egress_probe_ok else 'failed' }}</span></div>
-    <div>Observed public IP: <code>{{ topology.observed_egress_ip or '-' }}</code></div>
+    <h2>Synthetic egress probe</h2>
+    <div style="margin-bottom:6px;">Probe: <span class="badge {{ 'ok' if topology.egress_probe_ok else 'bad' }}">{{ 'ok' if topology.egress_probe_ok else 'failed' }}</span></div>
+    <div style="margin-bottom:4px;">Observed public IP: <code>{{ topology.observed_egress_ip or '-' }}</code></div>
     <div>Expected public IP: <code>{{ topology.expected_egress_ip }}</code></div>
   </div>
   <div class="card" style="grid-column:span 6">
-    <h2 style="margin-top:0">Recent clients</h2>
+    <h2>Recent clients</h2>
     <table>
-      <thead><tr><th>Name</th><th>Status</th><th>Last seen</th><th>Source IP</th></tr></thead>
+      <thead>
+        <tr><th>Name</th><th>Status</th><th>Last seen</th><th>Source IP</th></tr>
+      </thead>
       <tbody>
       {% for client in clients[:5] %}
         <tr>

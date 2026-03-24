@@ -19,20 +19,41 @@
 </div>
 <div class="grid">
   <div class="card" style="grid-column:span 7;">
-    <h2 style="margin-top:0">Frontend config</h2>
+    <h2>Frontend config</h2>
     <form method="post" action="/config/frontend">
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
-        <div><label>Frontend port</label><input name="frontend_port" value="{{ frontend.port }}" /></div>
-        <div><label>SNI</label><input name="frontend_sni" value="{{ frontend.server_name }}" /></div>
-        <div><label>Fingerprint</label><input name="frontend_fp" value="{{ frontend.fingerprint }}" /></div>
+        <div>
+          <label for="frontend_port">Frontend port</label>
+          <input id="frontend_port" name="frontend_port" value="{{ frontend.port }}" />
+        </div>
+        <div>
+          <label for="frontend_sni">SNI</label>
+          <input id="frontend_sni" name="frontend_sni" value="{{ frontend.server_name }}" />
+        </div>
+        <div>
+          <label for="frontend_fp">Fingerprint</label>
+          <input id="frontend_fp" name="frontend_fp" value="{{ frontend.fingerprint }}" />
+        </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px;">
-        <div><label>Target</label><input name="frontend_target" value="{{ frontend.target }}" /></div>
-        <div><label>SpiderX</label><input name="frontend_spider" value="{{ frontend.spider_x }}" /></div>
+        <div>
+          <label for="frontend_target">Target</label>
+          <input id="frontend_target" name="frontend_target" value="{{ frontend.target }}" />
+        </div>
+        <div>
+          <label for="frontend_spider">SpiderX</label>
+          <input id="frontend_spider" name="frontend_spider" value="{{ frontend.spider_x }}" />
+        </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px;">
-        <div><label>Relay host</label><input name="relay_host" value="{{ frontend.relay_host }}" /></div>
-        <div><label>Relay port</label><input name="relay_port" value="{{ frontend.relay_port }}" /></div>
+        <div>
+          <label for="relay_host">Relay host</label>
+          <input id="relay_host" name="relay_host" value="{{ frontend.relay_host }}" />
+        </div>
+        <div>
+          <label for="relay_port">Relay port</label>
+          <input id="relay_port" name="relay_port" value="{{ frontend.relay_port }}" />
+        </div>
       </div>
       <div class="small" style="margin-top:8px;">
         {% if topology.ipsec_expected %}
@@ -42,24 +63,33 @@
         {% endif %}
       </div>
       <div style="margin-top:12px;">
-        <label>Short IDs (comma separated)</label>
-        <input name="frontend_shortids" value="{{ frontend.short_ids | join(',') }}" />
+        <label for="frontend_shortids">Short IDs (comma separated)</label>
+        <input id="frontend_shortids" name="frontend_shortids" value="{{ frontend.short_ids | join(',') }}" />
       </div>
       <div style="margin-top:16px;display:flex;gap:12px;">
-        <button type="submit" formaction="/config/frontend/validate">Validate only</button>
+        <button class="secondary" type="submit" formaction="/config/frontend/validate">Validate only</button>
         <button type="submit">Validate + save + restart</button>
       </div>
     </form>
   </div>
   <div class="card" style="grid-column:span 5;">
-    <h2 style="margin-top:0">Relay config</h2>
+    <h2>Relay config</h2>
     <form method="post" action="/config/relay">
-      <div><label>Relay host</label><input name="relay_public_host" value="{{ relay.host }}" /></div>
-      <div style="margin-top:12px;"><label>Relay port</label><input name="relay_listen_port" value="{{ relay.port }}" /></div>
-      <div style="margin-top:12px;"><label>Relay UUID</label><input name="relay_uuid" value="{{ relay.uuid }}" /></div>
+      <div>
+        <label for="relay_public_host">Relay host</label>
+        <input id="relay_public_host" name="relay_public_host" value="{{ relay.host }}" />
+      </div>
+      <div style="margin-top:12px;">
+        <label for="relay_listen_port">Relay port</label>
+        <input id="relay_listen_port" name="relay_listen_port" value="{{ relay.port }}" />
+      </div>
+      <div style="margin-top:12px;">
+        <label for="relay_uuid">Relay UUID</label>
+        <input id="relay_uuid" name="relay_uuid" value="{{ relay.uuid }}" />
+      </div>
       <div class="small" style="margin-top:8px;">This edits the frontend outbound target. Keep public host for direct mode; switch intentionally to private host only after IPSec transport validation is green.</div>
       <div style="margin-top:16px;display:flex;gap:12px;">
-        <button type="submit" formaction="/config/relay/validate">Validate only</button>
+        <button class="secondary" type="submit" formaction="/config/relay/validate">Validate only</button>
         <button type="submit">Validate + save + restart</button>
       </div>
     </form>
