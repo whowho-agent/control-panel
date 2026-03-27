@@ -5,9 +5,9 @@ deploy/ansible/inventory.ini
 .env
 
 # Runtime artifacts
-__pycache__/
-*.pyc
-*.pyo
+**/__pycache__/
+**/*.pyc
+**/*.pyo
 .pytest_cache/
 runtime/
 
