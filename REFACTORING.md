@@ -266,12 +266,12 @@ class RelayNodeRepo:
 - [x] `list_clients()` разбит на приватные методы
 - [x] Тесты зелёные
 
-### Фаза 2
-- [ ] `domain/vless_uri.py` + тесты
-- [ ] `domain/client_status.py` + тесты
-- [ ] `domain/transport_mode.py` + тесты
-- [ ] Сервис обновлён на новые domain-классы
-- [ ] Тесты зелёные
+### Фаза 2 ✓
+- [x] `domain/vless_uri.py` + тесты
+- [x] `domain/client_status.py` + тесты
+- [x] `domain/transport_mode.py` + тесты
+- [x] Сервис обновлён на новые domain-классы
+- [x] Тесты зелёные
 
 ### Фаза 3
 - [ ] `domain/xray_config.py` с `XrayConfigAccessor`

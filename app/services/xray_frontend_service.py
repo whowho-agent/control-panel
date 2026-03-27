@@ -3,8 +3,10 @@ import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any
-from urllib.parse import quote, urlencode
 
+from app.domain.client_status import compute_status
+from app.domain.transport_mode import TransportMode
+from app.domain.vless_uri import VlessUriBuilder
 from app.domain.xray_frontend import (
     ControlPlaneError,
     CreateFrontendClientCommand,
@@ -41,7 +43,7 @@ class XrayFrontendService:
         self.online_window_minutes = online_window_minutes
         self.expected_egress_ip = expected_egress_ip
         self.topology_cache_ttl_seconds = topology_cache_ttl_seconds
-        self.transport_mode = (transport_mode or "direct").strip().lower()
+        self._transport_mode = TransportMode.from_string(transport_mode)
         self.relay_public_host = relay_public_host
         self.relay_private_host = relay_private_host
         self.ipsec_local_tunnel_ip = ipsec_local_tunnel_ip
@@ -59,7 +61,6 @@ class XrayFrontendService:
         config = self.frontend_repo.read_config()
         meta = self.meta_repo.read()
         inbound = next(item for item in config["inbounds"] if item.get("tag") == "frontend-in")
-        now = datetime.now(timezone.utc)
         clients: list[FrontendClient] = []
         meta_changed = False
         enabled_client_ids = [
@@ -94,13 +95,12 @@ class XrayFrontendService:
                     )
                     meta_changed = True
 
-            status = "offline"
-            if last_seen:
-                seen_dt = datetime.fromisoformat(last_seen.replace("Z", "+00:00"))
-                if now - seen_dt <= timedelta(minutes=self.online_window_minutes):
-                    status = "online"
-            elif activity and item.get("enable", True):
-                status = "activity-unattributed"
+            status = compute_status(
+                last_seen=last_seen,
+                enabled=item.get("enable", True),
+                has_any_activity=bool(activity),
+                window_minutes=self.online_window_minutes,
+            )
             clients.append(
                 FrontendClient(
                     id=client_id,
@@ -219,10 +219,9 @@ class XrayFrontendService:
         frontend = self.frontend_repo.get_frontend_config()
         observed_egress_ip = self.relay_repo.probe_observed_public_ip()
         readiness = self.frontend_repo.get_frontend_readiness()
-        ipsec_expected = self.transport_mode == "ipsec"
         active_relay_host = frontend.relay_host
         ipsec_active = bool(
-            ipsec_expected
+            self._transport_mode.is_ipsec
             and self.relay_private_host
             and active_relay_host == self.relay_private_host
             and self.relay_repo.is_port_reachable()
@@ -239,13 +238,13 @@ class XrayFrontendService:
             observed_egress_ip=observed_egress_ip,
             frontend_ready=readiness.ready,
             frontend_readiness_status=readiness.status,
-            transport_mode=self.transport_mode,
-            transport_label=self._transport_label(ipsec_expected, ipsec_active),
+            transport_mode=self._transport_mode.mode,
+            transport_label=self._transport_mode.label(ipsec_active, bool(self.relay_private_host)),
             relay_public_host=self.relay_public_host,
             relay_private_host=self.relay_private_host,
             active_relay_host=active_relay_host,
             active_relay_port=frontend.relay_port,
-            ipsec_expected=ipsec_expected,
+            ipsec_expected=self._transport_mode.is_ipsec,
             ipsec_active=ipsec_active,
             ipsec_local_tunnel_ip=self.ipsec_local_tunnel_ip,
             ipsec_remote_tunnel_ip=self.ipsec_remote_tunnel_ip,
@@ -320,20 +319,7 @@ class XrayFrontendService:
         return config
 
     def build_client_uri(self, host: str, client: FrontendClient, frontend_config) -> str:
-        query = {
-            "type": "tcp",
-            "security": "reality",
-            "pbk": frontend_config.public_key,
-            "fp": frontend_config.fingerprint,
-            "sni": frontend_config.server_name,
-            "sid": client.short_id or (frontend_config.short_ids[0] if frontend_config.short_ids else ""),
-            "spx": frontend_config.spider_x,
-            "encryption": "none",
-        }
-        return (
-            f"vless://{client.id}@{host}:{frontend_config.port}?"
-            f"{urlencode(query)}#{quote(client.name)}"
-        )
+        return VlessUriBuilder().build(client, host, frontend_config)
 
     def _generate_short_id(self, existing_short_ids: list[str]) -> str:
         existing = set(existing_short_ids)
@@ -342,11 +328,3 @@ class XrayFrontendService:
             if short_id not in existing:
                 return short_id
 
-    def _transport_label(self, ipsec_expected: bool, ipsec_active: bool) -> str:
-        if not ipsec_expected:
-            return "Direct public relay"
-        if ipsec_active:
-            return "IPSec private relay"
-        if self.relay_private_host:
-            return "IPSec degraded: private relay unreachable"
-        return "IPSec configured, waiting for private cutover"
