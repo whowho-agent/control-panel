@@ -23,19 +23,18 @@
     mode: "0644"
   notify: restart relay-agent
 
-- name: Copy requirements
-  copy:
-    src: "{{ playbook_dir }}/../../../relay-agent/requirements.txt"
-    dest: "{{ relay_agent_install_dir }}/requirements.txt"
-    owner: "{{ relay_agent_user }}"
-    group: "{{ relay_agent_user }}"
-    mode: "0644"
+- name: Ensure python3-venv installed
+  apt:
+    name: python3.12-venv
+    state: present
 
-- name: Install Python dependencies
+- name: Create virtualenv and install deps
   pip:
-    requirements: "{{ relay_agent_install_dir }}/requirements.txt"
-    extra_args: "--break-system-packages"
-  become: true
+    name:
+      - fastapi==0.116.1
+      - "uvicorn[standard]==0.35.0"
+    virtualenv: "{{ relay_agent_install_dir }}/venv"
+    virtualenv_command: python3 -m venv
 
 - name: Install systemd service
   template:
