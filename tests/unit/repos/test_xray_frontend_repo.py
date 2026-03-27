@@ -286,3 +286,31 @@ def test_apply_config_ensures_runtime_log_files_before_restart(tmp_path: Path) -
 
     assert access_log_path.exists()
     assert error_log_path.exists()
+
+
+def test_parse_activity_handles_no_millis_and_tcp_prefix(tmp_path: Path) -> None:
+    """Xray sometimes logs without milliseconds and with 'tcp:' prefix before IP."""
+    config_path = tmp_path / "config.json"
+    access_log_path = tmp_path / "access.log"
+    access_log_path.write_text(
+        "2026/03/27 21:25:51 from tcp:5.228.113.144:7953 accepted tcp:apple.com:443 [frontend-in -> to-relay] email: client-a\n"
+        "2026/03/27 21:26:05 from 5.228.113.144:7954 accepted tcp:github.com:443 [frontend-in -> to-relay] email: client-b\n"
+        "2026/03/27 21:26:05 from 1.2.3.4:1234 accepted tcp:example.com:443 [other-inbound -> direct]\n"
+    )
+
+    repo = XrayFrontendRepo(
+        config_path=str(config_path),
+        access_log_path=str(access_log_path),
+        service_name="xray-frontend",
+        xray_binary_path=str(tmp_path / "xray"),
+        use_nsenter=False,
+    )
+
+    result = repo.parse_activity()
+
+    assert "5.228.113.144" in result
+    assert result["5.228.113.144"]["source_ip"] == "5.228.113.144"
+    # last_seen should be the later of the two entries
+    assert "21:26:05" in result["5.228.113.144"]["last_seen"]
+    # other-inbound entries should be ignored
+    assert "1.2.3.4" not in result

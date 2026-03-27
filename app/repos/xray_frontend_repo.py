@@ -247,17 +247,17 @@ class XrayFrontendRepo:
         if not self.access_log_path.exists():
             return result
         line_re = re.compile(
-            r"^(?P<ts>\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}\.\d+) "
-            r"from (?P<ip>[^:]+):\d+ accepted .*? \[(?P<inbound>[^\]]+) ->"
+            r"^(?P<ts>\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}(?:\.\d+)?) "
+            r"from (?:(?:tcp|udp):)?(?P<ip>[\d.]+):\d+ accepted .*? \[(?P<inbound>[^\]]+) ->"
         )
         lines = self.access_log_path.read_text(errors="ignore").splitlines()[-2000:]
         for line in lines:
             match = line_re.search(line)
             if not match or match.group("inbound") != "frontend-in":
                 continue
-            seen_at = datetime.strptime(match.group("ts"), "%Y/%m/%d %H:%M:%S.%f").replace(
-                tzinfo=timezone.utc
-            )
+            ts = match.group("ts")
+            fmt = "%Y/%m/%d %H:%M:%S.%f" if "." in ts else "%Y/%m/%d %H:%M:%S"
+            seen_at = datetime.strptime(ts, fmt).replace(tzinfo=timezone.utc)
             ip = match.group("ip")
             previous = result.get(ip)
             if not previous or seen_at > previous["last_seen_dt"]:
