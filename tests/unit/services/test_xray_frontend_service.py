@@ -1,3 +1,4 @@
+import re
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -56,6 +57,31 @@ class FakeFrontendRepo:
             port=frontend.relay_port,
             uuid=frontend.relay_uuid,
         )
+
+    def parse_activity(self) -> dict:
+        result: dict = {}
+        if not self.access_log_path.exists():
+            return result
+        line_re = re.compile(
+            r"^(?P<ts>\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}\.\d+) "
+            r"from (?P<ip>[^:]+):\d+ accepted .*? \[(?P<inbound>[^\]]+) ->"
+        )
+        for line in self.access_log_path.read_text(errors="ignore").splitlines()[-2000:]:
+            match = line_re.search(line)
+            if not match or match.group("inbound") != "frontend-in":
+                continue
+            seen_at = datetime.strptime(match.group("ts"), "%Y/%m/%d %H:%M:%S.%f").replace(
+                tzinfo=timezone.utc
+            )
+            ip = match.group("ip")
+            prev = result.get(ip)
+            if not prev or seen_at > prev["last_seen_dt"]:
+                result[ip] = {
+                    "last_seen_dt": seen_at,
+                    "last_seen": seen_at.isoformat().replace("+00:00", "Z"),
+                    "source_ip": ip,
+                }
+        return result
 
     def get_frontend_service_status(self) -> str:
         return "configured"

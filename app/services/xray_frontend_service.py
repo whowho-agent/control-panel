@@ -1,4 +1,4 @@
-import re
+import logging
 import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -16,6 +16,8 @@ from app.domain.xray_frontend_config import UpdateFrontendConfigCommand, UpdateR
 from app.repos.client_meta_repo import ClientMetaRepo
 from app.repos.relay_node_repo import RelayNodeRepo
 from app.repos.xray_frontend_repo import XrayFrontendRepo
+
+logger = logging.getLogger(__name__)
 
 
 class XrayFrontendService:
@@ -47,10 +49,16 @@ class XrayFrontendService:
         self._topology_cache: dict[str, Any] = {"value": None, "expires_at": None}
 
     def list_clients(self) -> list[FrontendClient]:
+        activity = self.frontend_repo.parse_activity()
+        clients, meta, meta_changed = self._build_clients(activity)
+        if meta_changed:
+            self.meta_repo.write(meta)
+        return clients
+
+    def _build_clients(self, activity: dict) -> tuple[list[FrontendClient], dict, bool]:
         config = self.frontend_repo.read_config()
         meta = self.meta_repo.read()
         inbound = next(item for item in config["inbounds"] if item.get("tag") == "frontend-in")
-        activity = self._parse_activity()
         now = datetime.now(timezone.utc)
         clients: list[FrontendClient] = []
         meta_changed = False
@@ -107,9 +115,7 @@ class XrayFrontendService:
                 )
             )
 
-        if meta_changed:
-            self.meta_repo.write(meta)
-        return clients
+        return clients, meta, meta_changed
 
     def create_client(self, command: CreateFrontendClientCommand) -> FrontendClientUriResult:
         name = command.name.strip()
@@ -344,29 +350,3 @@ class XrayFrontendService:
         if self.relay_private_host:
             return "IPSec degraded: private relay unreachable"
         return "IPSec configured, waiting for private cutover"
-
-    def _parse_activity(self) -> dict[str, dict[str, Any]]:
-        result: dict[str, dict[str, Any]] = {}
-        if not self.frontend_repo.access_log_path.exists():
-            return result
-        line_re = re.compile(
-            r"^(?P<ts>\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}\.\d+) "
-            r"from (?P<ip>[^:]+):\d+ accepted .*? \[(?P<inbound>[^\]]+) ->"
-        )
-        lines = self.frontend_repo.access_log_path.read_text(errors="ignore").splitlines()[-2000:]
-        for line in lines:
-            match = line_re.search(line)
-            if not match or match.group("inbound") != "frontend-in":
-                continue
-            seen_at = datetime.strptime(match.group("ts"), "%Y/%m/%d %H:%M:%S.%f").replace(
-                tzinfo=timezone.utc
-            )
-            ip = match.group("ip")
-            previous = result.get(ip)
-            if not previous or seen_at > previous["last_seen_dt"]:
-                result[ip] = {
-                    "last_seen_dt": seen_at,
-                    "last_seen": seen_at.isoformat().replace("+00:00", "Z"),
-                    "source_ip": ip,
-                }
-        return result

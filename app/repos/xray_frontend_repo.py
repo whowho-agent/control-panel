@@ -1,10 +1,16 @@
 import json
+import logging
+import re
 import subprocess
 import tempfile
 import time
+from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 from app.domain.xray_frontend import FrontendApplyResult, FrontendConfigResult, RelayConfigResult
+
+logger = logging.getLogger(__name__)
 
 
 class XrayFrontendRepo:
@@ -30,23 +36,28 @@ class XrayFrontendRepo:
         self.config_path.write_text(json.dumps(config, indent=2) + "\n")
 
     def apply_config(self, config: dict) -> FrontendApplyResult:
+        logger.info("apply_config: start")
         previous_config = self.config_path.read_text() if self.config_path.exists() else ""
         rendered = json.dumps(config, indent=2) + "\n"
         self._ensure_runtime_files(config)
         validation = self.validate_config_text(rendered)
         if not validation.preflight_ok:
+            logger.warning("apply_config: validation failed — %s", validation.message)
             return validation
 
         self.config_path.write_text(rendered)
         restart_result = self.restart_frontend()
         if restart_result.ready:
+            logger.info("apply_config: done, service ready")
             return restart_result
 
+        logger.error("apply_config: restart failed — %s, attempting rollback", restart_result.message)
         rollback_performed = False
         if previous_config:
             self.config_path.write_text(previous_config)
             rollback_result = self.restart_frontend()
             rollback_performed = rollback_result.ready
+            logger.info("apply_config: rollback %s", "restored" if rollback_performed else "also failed")
 
         return FrontendApplyResult(
             preflight_ok=True,
@@ -70,6 +81,7 @@ class XrayFrontendRepo:
                 check=False,
                 capture_output=True,
                 text=True,
+                timeout=30,
             )
         except FileNotFoundError:
             return FrontendApplyResult(
@@ -132,6 +144,7 @@ class XrayFrontendRepo:
         )
 
     def restart_frontend(self) -> FrontendApplyResult:
+        logger.info("restart_frontend: sending systemctl restart %s", self.service_name)
         try:
             if self.config_path.exists():
                 self._ensure_runtime_files(self.read_config())
@@ -140,6 +153,7 @@ class XrayFrontendRepo:
                 check=False,
                 capture_output=True,
                 text=True,
+                timeout=30,
             )
         except FileNotFoundError:
             return FrontendApplyResult(
@@ -150,15 +164,18 @@ class XrayFrontendRepo:
                 message="systemctl is not available in this runtime",
             )
         if restart.returncode != 0:
+            msg = (restart.stderr or restart.stdout or "systemctl restart failed").strip()
+            logger.error("restart_frontend: failed — %s", msg)
             return FrontendApplyResult(
                 preflight_ok=True,
                 restarted=False,
                 ready=False,
                 status="restart-failed",
-                message=(restart.stderr or restart.stdout or "systemctl restart failed").strip(),
+                message=msg,
             )
 
         readiness = self.wait_until_ready()
+        logger.info("restart_frontend: ready=%s status=%s", readiness[0], readiness[1])
         return FrontendApplyResult(
             preflight_ok=True,
             restarted=True,
@@ -183,6 +200,7 @@ class XrayFrontendRepo:
                 check=False,
                 capture_output=True,
                 text=True,
+                timeout=30,
             )
             status = result.stdout.strip() or result.stderr.strip() or "unknown"
             if status:
@@ -213,6 +231,7 @@ class XrayFrontendRepo:
             check=True,
             capture_output=True,
             text=True,
+            timeout=30,
         )
         for line in result.stdout.splitlines():
             if line.startswith("Password:"):
@@ -220,6 +239,32 @@ class XrayFrontendRepo:
             if line.startswith("Public key:"):
                 return line.split(":", 1)[1].strip()
         return ""
+
+    def parse_activity(self) -> dict[str, dict[str, Any]]:
+        result: dict[str, dict[str, Any]] = {}
+        if not self.access_log_path.exists():
+            return result
+        line_re = re.compile(
+            r"^(?P<ts>\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}\.\d+) "
+            r"from (?P<ip>[^:]+):\d+ accepted .*? \[(?P<inbound>[^\]]+) ->"
+        )
+        lines = self.access_log_path.read_text(errors="ignore").splitlines()[-2000:]
+        for line in lines:
+            match = line_re.search(line)
+            if not match or match.group("inbound") != "frontend-in":
+                continue
+            seen_at = datetime.strptime(match.group("ts"), "%Y/%m/%d %H:%M:%S.%f").replace(
+                tzinfo=timezone.utc
+            )
+            ip = match.group("ip")
+            previous = result.get(ip)
+            if not previous or seen_at > previous["last_seen_dt"]:
+                result[ip] = {
+                    "last_seen_dt": seen_at,
+                    "last_seen": seen_at.isoformat().replace("+00:00", "Z"),
+                    "source_ip": ip,
+                }
+        return result
 
     def _systemctl_command(self, action: str) -> list[str]:
         if self.use_nsenter:

@@ -1,5 +1,8 @@
+import logging
 import socket
 import subprocess
+
+logger = logging.getLogger(__name__)
 
 
 class RelayNodeRepo:
@@ -32,9 +35,16 @@ class RelayNodeRepo:
             check=False,
             capture_output=True,
             text=True,
+            timeout=10,
         )
         if result.returncode == 0 and result.stdout.strip():
             return result.stdout.strip()
+        if result.returncode != 0:
+            logger.warning(
+                "get_remote_service_status: SSH error (rc=%d) — %s",
+                result.returncode,
+                (result.stderr or result.stdout or "").strip(),
+            )
         return "unknown"
 
     def probe_observed_public_ip(self) -> str:
@@ -43,9 +53,15 @@ class RelayNodeRepo:
             check=False,
             capture_output=True,
             text=True,
+            timeout=10,
         )
         if result.returncode == 0:
             return result.stdout.strip()
+        logger.warning(
+            "probe_observed_public_ip: SSH error (rc=%d) — %s",
+            result.returncode,
+            (result.stderr or result.stdout or "").strip(),
+        )
         return ""
 
     def _ssh_command(self, remote_command: str) -> list[str]:
