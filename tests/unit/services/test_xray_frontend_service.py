@@ -376,7 +376,7 @@ def test_get_topology_health_uses_cached_value_within_ttl(tmp_path: Path) -> Non
 
 def test_get_topology_health_marks_ipsec_active_after_private_cutover(tmp_path: Path) -> None:
     service, frontend_repo, _, relay_repo = build_service(tmp_path)
-    service._transport_mode = TransportMode.from_string("ipsec")
+    service._topology._transport_mode = TransportMode.from_string("ipsec")
     frontend_repo.config["outbounds"][0]["settings"]["vnext"][0]["address"] = "10.10.10.2"
     relay_repo.observed_ip = "72.56.109.197"
 
@@ -395,7 +395,7 @@ def test_get_topology_health_marks_ipsec_active_after_private_cutover(tmp_path: 
 
 def test_get_topology_health_marks_ipsec_degraded_when_private_relay_is_unreachable(tmp_path: Path) -> None:
     service, frontend_repo, _, relay_repo = build_service(tmp_path)
-    service._transport_mode = TransportMode.from_string("ipsec")
+    service._topology._transport_mode = TransportMode.from_string("ipsec")
     frontend_repo.config["outbounds"][0]["settings"]["vnext"][0]["address"] = "10.10.10.2"
     relay_repo.reachable = False
 

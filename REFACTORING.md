@@ -280,14 +280,14 @@ class RelayNodeRepo:
 - [x] Голые dict-навигации убраны
 - [x] Тесты зелёные
 
-### Фаза 4
-- [ ] `services/client_service.py` + тесты
-- [ ] `services/config_service.py` + тесты
-- [ ] `services/topology_service.py` + тесты
-- [ ] `XrayFrontendService` — фасад, делегирует
-- [ ] `ttl_cache` декоратор
-- [ ] `deps.py` не изменён
-- [ ] Тесты зелёные
+### Фаза 4 ✓
+- [x] `services/client_service.py` + тесты
+- [x] `services/config_service.py` + тесты
+- [x] `services/topology_service.py` + тесты
+- [x] `XrayFrontendService` — фасад, делегирует
+- [x] `ttl_cache` декоратор
+- [x] `deps.py` не изменён
+- [x] Тесты зелёные
 
 ### Фаза 5 ✓
 - [x] `relay-agent/main.py`

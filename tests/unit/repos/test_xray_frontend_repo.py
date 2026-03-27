@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 from unittest.mock import patch
 
+from app.domain.xray_config import XrayConfigAccessor
 from app.repos.xray_frontend_repo import XrayFrontendRepo
 
 
@@ -55,7 +56,11 @@ def test_get_frontend_config_returns_runtime_values(tmp_path: Path) -> None:
         use_nsenter=False,
     )
 
-    result = repo.get_frontend_config()
+    with patch("app.repos.xray_frontend_repo.subprocess.run") as run:
+        run.return_value.stdout = "Public key: derived-pub\n"
+        run.return_value.returncode = 0
+
+        result = repo.get_frontend_config()
 
     assert result.port == 9444
     assert result.server_name == "mitigator.ru"
@@ -115,7 +120,11 @@ def test_get_relay_config_from_frontend_returns_outbound_values(tmp_path: Path) 
         use_nsenter=False,
     )
 
-    result = repo.get_relay_config_from_frontend()
+    with patch("app.repos.xray_frontend_repo.subprocess.run") as run:
+        run.return_value.stdout = "Public key: derived-pub\n"
+        run.return_value.returncode = 0
+
+        result = repo.get_relay_config_from_frontend()
 
     assert result.host == "203.0.113.10"
     assert result.port == 9777
@@ -142,7 +151,7 @@ def test_validate_config_reports_preflight_error(tmp_path: Path) -> None:
         run.return_value.stdout = ""
         run.return_value.stderr = "failed to parse candidate config"
 
-        result = repo.validate_config({"inbounds": [], "outbounds": []})
+        result = repo.validate_config(XrayConfigAccessor({"inbounds": [], "outbounds": []}))
 
     assert result.preflight_ok is False
     assert result.status == "validation-failed"
@@ -174,7 +183,7 @@ def test_apply_config_rolls_back_when_restart_fails(tmp_path: Path) -> None:
             FrontendApplyResult(True, True, True, "ready", "restored"),
         ]
 
-        result = repo.apply_config({"inbounds": [], "outbounds": []})
+        result = repo.apply_config(XrayConfigAccessor({"inbounds": [], "outbounds": []}))
 
     assert result.ready is False
     assert result.rollback_performed is True
@@ -224,7 +233,7 @@ def test_read_config_tolerates_literal_backslash_n_suffix(tmp_path: Path) -> Non
         use_nsenter=False,
     )
 
-    assert repo.read_config() == {"inbounds": [], "outbounds": []}
+    assert repo.read_config().to_dict() == {"inbounds": [], "outbounds": []}
 
 
 def test_write_config_ensures_runtime_log_files_exist(tmp_path: Path) -> None:
@@ -243,7 +252,7 @@ def test_write_config_ensures_runtime_log_files_exist(tmp_path: Path) -> None:
         use_nsenter=False,
     )
 
-    repo.write_config({"log": {"error": str(error_log_path)}, "inbounds": [], "outbounds": []})
+    repo.write_config(XrayConfigAccessor({"log": {"error": str(error_log_path)}, "inbounds": [], "outbounds": []}))
 
     assert config_path.exists()
     assert access_log_path.exists()
@@ -273,7 +282,7 @@ def test_apply_config_ensures_runtime_log_files_before_restart(tmp_path: Path) -
         validate.return_value = FrontendApplyResult(True, False, False, "validated", "ok")
         restart.return_value = FrontendApplyResult(True, True, True, "ready", "ok")
 
-        repo.apply_config({"log": {"error": str(error_log_path)}, "inbounds": [], "outbounds": []})
+        repo.apply_config(XrayConfigAccessor({"log": {"error": str(error_log_path)}, "inbounds": [], "outbounds": []}))
 
     assert access_log_path.exists()
     assert error_log_path.exists()

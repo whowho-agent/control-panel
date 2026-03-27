@@ -149,7 +149,7 @@ class XrayFrontendRepo:
         logger.info("restart_frontend: sending systemctl restart %s", self.service_name)
         try:
             if self.config_path.exists():
-                self._ensure_runtime_files(self.read_config())
+                self._ensure_runtime_files(self.read_config().to_dict())
             restart = subprocess.run(
                 self._systemctl_command("restart"),
                 check=False,
