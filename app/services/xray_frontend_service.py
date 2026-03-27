@@ -10,8 +10,11 @@ from app.domain.vless_uri import VlessUriBuilder
 from app.domain.xray_frontend import (
     ControlPlaneError,
     CreateFrontendClientCommand,
+    FrontendApplyResult,
     FrontendClient,
     FrontendClientUriResult,
+    FrontendConfigResult,
+    RelayConfigResult,
     TopologyHealthResult,
 )
 from app.domain.xray_frontend_config import UpdateFrontendConfigCommand, UpdateRelayConfigCommand
@@ -82,17 +85,13 @@ class XrayFrontendService:
                 last_seen = matched_activity["last_seen"]
                 source_ip = matched_activity["source_ip"]
                 if client_meta.get("last_seen") != last_seen or client_meta.get("source_ip") != source_ip:
-                    meta.setdefault("clients", {}).setdefault(client_id, {}).update(
-                        {"last_seen": last_seen, "source_ip": source_ip}
-                    )
+                    meta = _update_client_meta(meta, client_id, last_seen, source_ip)
                     meta_changed = True
             elif fallback_activity and client_id == enabled_client_ids[0]:
                 last_seen = fallback_activity["last_seen"]
                 source_ip = fallback_activity["source_ip"]
                 if client_meta.get("last_seen") != last_seen or client_meta.get("source_ip") != source_ip:
-                    meta.setdefault("clients", {}).setdefault(client_id, {}).update(
-                        {"last_seen": last_seen, "source_ip": source_ip}
-                    )
+                    meta = _update_client_meta(meta, client_id, last_seen, source_ip)
                     meta_changed = True
 
             status = compute_status(
@@ -152,14 +151,14 @@ class XrayFrontendService:
             )
 
         meta = self.meta_repo.read()
-        meta.setdefault("clients", {})[client_id] = {
+        new_entry = {
             "name": name,
             "short_id": short_id,
             "created_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
             "last_seen": "",
             "source_ip": "",
         }
-        self.meta_repo.write(meta)
+        self.meta_repo.write({**meta, "clients": {**meta.get("clients", {}), client_id: new_entry}})
 
         client = FrontendClient(id=client_id, name=name, short_id=short_id, email=name)
         frontend.short_ids = reality["shortIds"]
@@ -185,8 +184,8 @@ class XrayFrontendService:
                 status_code=409,
             )
         meta = self.meta_repo.read()
-        meta.get("clients", {}).pop(client_id, None)
-        self.meta_repo.write(meta)
+        remaining = {k: v for k, v in meta.get("clients", {}).items() if k != client_id}
+        self.meta_repo.write({**meta, "clients": remaining})
         return True
 
     def set_client_enabled(self, client_id: str, enabled: bool) -> bool:
@@ -220,13 +219,13 @@ class XrayFrontendService:
         observed_egress_ip = self.relay_repo.probe_observed_public_ip()
         readiness = self.frontend_repo.get_frontend_readiness()
         active_relay_host = frontend.relay_host
+        relay_reachable = self.relay_repo.is_port_reachable()
         ipsec_active = bool(
             self._transport_mode.is_ipsec
             and self.relay_private_host
             and active_relay_host == self.relay_private_host
-            and self.relay_repo.is_port_reachable()
+            and relay_reachable
         )
-        relay_reachable = self.relay_repo.is_port_reachable()
         result = TopologyHealthResult(
             frontend_service=self.frontend_repo.get_frontend_service_status(),
             relay_service=self.relay_repo.get_remote_service_status(),
@@ -255,21 +254,21 @@ class XrayFrontendService:
         }
         return result
 
-    def get_frontend_config(self):
+    def get_frontend_config(self) -> FrontendConfigResult:
         return self.frontend_repo.get_frontend_config()
 
-    def get_relay_config(self):
+    def get_relay_config(self) -> RelayConfigResult:
         return self.frontend_repo.get_relay_config_from_frontend()
 
-    def validate_frontend_config(self, command: UpdateFrontendConfigCommand):
+    def validate_frontend_config(self, command: UpdateFrontendConfigCommand) -> FrontendApplyResult:
         config = self.read_candidate_frontend_config(command)
         return self.frontend_repo.validate_config(config)
 
-    def validate_relay_config(self, command: UpdateRelayConfigCommand):
+    def validate_relay_config(self, command: UpdateRelayConfigCommand) -> FrontendApplyResult:
         config = self.read_candidate_relay_config(command)
         return self.frontend_repo.validate_config(config)
 
-    def update_frontend_config(self, command: UpdateFrontendConfigCommand):
+    def update_frontend_config(self, command: UpdateFrontendConfigCommand) -> FrontendConfigResult:
         config = self.read_candidate_frontend_config(command)
         apply_result = self.frontend_repo.apply_config(config)
         if not apply_result.ready:
@@ -280,7 +279,7 @@ class XrayFrontendService:
             )
         return self.frontend_repo.get_frontend_config()
 
-    def update_relay_config(self, command: UpdateRelayConfigCommand):
+    def update_relay_config(self, command: UpdateRelayConfigCommand) -> RelayConfigResult:
         config = self.read_candidate_relay_config(command)
         apply_result = self.frontend_repo.apply_config(config)
         if not apply_result.ready:
@@ -318,13 +317,18 @@ class XrayFrontendService:
         outbound["settings"]["vnext"][0]["users"][0]["id"] = command.relay_uuid
         return config
 
-    def build_client_uri(self, host: str, client: FrontendClient, frontend_config) -> str:
+    def build_client_uri(self, host: str, client: FrontendClient, frontend_config: FrontendConfigResult) -> str:
         return VlessUriBuilder().build(client, host, frontend_config)
 
     def _generate_short_id(self, existing_short_ids: list[str]) -> str:
         existing = set(existing_short_ids)
-        while True:
+        for _ in range(100):
             short_id = secrets.token_hex(8)
             if short_id not in existing:
                 return short_id
+        raise RuntimeError("Failed to generate a unique short_id after 100 attempts")
 
+
+def _update_client_meta(meta: dict, client_id: str, last_seen: str, source_ip: str) -> dict:
+    updated_client = {**meta.get("clients", {}).get(client_id, {}), "last_seen": last_seen, "source_ip": source_ip}
+    return {**meta, "clients": {**meta.get("clients", {}), client_id: updated_client}}

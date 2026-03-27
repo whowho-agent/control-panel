@@ -389,7 +389,7 @@ def test_get_topology_health_marks_ipsec_active_after_private_cutover(tmp_path: 
     assert result.relay_private_host == "10.10.10.2"
     assert result.ipsec_local_tunnel_ip == "10.10.10.1"
     assert result.ipsec_remote_tunnel_ip == "10.10.10.2"
-    assert relay_repo.calls == 4
+    assert relay_repo.calls == 3
 
 
 def test_get_topology_health_marks_ipsec_degraded_when_private_relay_is_unreachable(tmp_path: Path) -> None:
