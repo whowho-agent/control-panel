@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from app.domain.xray_config import XrayConfigAccessor
 from app.domain.xray_frontend import FrontendApplyResult, FrontendConfigResult, RelayConfigResult
 
 logger = logging.getLogger(__name__)
@@ -28,18 +29,20 @@ class XrayFrontendRepo:
         self.xray_binary_path = xray_binary_path
         self.use_nsenter = use_nsenter
 
-    def read_config(self) -> dict:
-        return self._load_json_file(self.config_path)
+    def read_config(self) -> XrayConfigAccessor:
+        return XrayConfigAccessor(self._load_json_file(self.config_path))
 
-    def write_config(self, config: dict) -> None:
-        self._ensure_runtime_files(config)
-        self.config_path.write_text(json.dumps(config, indent=2) + "\n")
+    def write_config(self, config: XrayConfigAccessor) -> None:
+        raw = config.to_dict()
+        self._ensure_runtime_files(raw)
+        self.config_path.write_text(json.dumps(raw, indent=2) + "\n")
 
-    def apply_config(self, config: dict) -> FrontendApplyResult:
+    def apply_config(self, config: XrayConfigAccessor) -> FrontendApplyResult:
         logger.info("apply_config: start")
         previous_config = self.config_path.read_text() if self.config_path.exists() else ""
-        rendered = json.dumps(config, indent=2) + "\n"
-        self._ensure_runtime_files(config)
+        raw = config.to_dict()
+        rendered = json.dumps(raw, indent=2) + "\n"
+        self._ensure_runtime_files(raw)
         validation = self.validate_config_text(rendered)
         if not validation.preflight_ok:
             logger.warning("apply_config: validation failed — %s", validation.message)
@@ -68,8 +71,8 @@ class XrayFrontendRepo:
             rollback_performed=rollback_performed,
         )
 
-    def validate_config(self, config: dict) -> FrontendApplyResult:
-        return self.validate_config_text(json.dumps(config, indent=2) + "\n")
+    def validate_config(self, config: XrayConfigAccessor) -> FrontendApplyResult:
+        return self.validate_config_text(json.dumps(config.to_dict(), indent=2) + "\n")
 
     def validate_config_text(self, config_text: str) -> FrontendApplyResult:
         try:
@@ -115,10 +118,9 @@ class XrayFrontendRepo:
 
     def get_frontend_config(self) -> FrontendConfigResult:
         config = self.read_config()
-        inbound = next(item for item in config["inbounds"] if item.get("tag") == "frontend-in")
-        outbound = next(item for item in config["outbounds"] if item.get("tag") == "to-relay")
+        inbound = config.frontend_inbound()
+        relay = config.relay_outbound()["settings"]["vnext"][0]
         reality = inbound["streamSettings"]["realitySettings"]
-        relay = outbound["settings"]["vnext"][0]
         settings = reality.get("settings", {})
         server_names = reality.get("serverNames") or []
         return FrontendConfigResult(

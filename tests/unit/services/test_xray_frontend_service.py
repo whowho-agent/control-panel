@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from app.domain.transport_mode import TransportMode
+from app.domain.xray_config import XrayConfigAccessor
 from app.domain.xray_frontend import (
     CreateFrontendClientCommand,
     FrontendApplyResult,
@@ -21,20 +22,20 @@ class FakeFrontendRepo:
         self.apply_result = FrontendApplyResult(True, True, True, "ready", "Frontend service is active")
         self.validate_result = FrontendApplyResult(True, False, False, "validated", "Config validation passed")
 
-    def read_config(self) -> dict:
-        return self.config
+    def read_config(self) -> XrayConfigAccessor:
+        return XrayConfigAccessor(self.config)
 
-    def write_config(self, config: dict) -> None:
-        self.config = config
+    def write_config(self, config: XrayConfigAccessor) -> None:
+        self.config = config.to_dict()
 
-    def apply_config(self, config: dict) -> FrontendApplyResult:
-        self.config = config
+    def apply_config(self, config: XrayConfigAccessor) -> FrontendApplyResult:
+        self.config = config.to_dict()
         if self.apply_result.restarted:
             self.restart_calls += 1
         return self.apply_result
 
-    def validate_config(self, config: dict) -> FrontendApplyResult:
-        self.config = config
+    def validate_config(self, config: XrayConfigAccessor) -> FrontendApplyResult:
+        self.config = config.to_dict()
         return self.validate_result
 
     def get_frontend_config(self) -> FrontendConfigResult:

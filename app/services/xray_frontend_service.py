@@ -7,6 +7,7 @@ from typing import Any
 from app.domain.client_status import compute_status
 from app.domain.transport_mode import TransportMode
 from app.domain.vless_uri import VlessUriBuilder
+from app.domain.xray_config import XrayConfigAccessor
 from app.domain.xray_frontend import (
     ControlPlaneError,
     CreateFrontendClientCommand,
@@ -63,18 +64,17 @@ class XrayFrontendService:
     def _build_clients(self, activity: dict) -> tuple[list[FrontendClient], dict, bool]:
         config = self.frontend_repo.read_config()
         meta = self.meta_repo.read()
-        inbound = next(item for item in config["inbounds"] if item.get("tag") == "frontend-in")
         clients: list[FrontendClient] = []
         meta_changed = False
         enabled_client_ids = [
-            item["id"] for item in inbound["settings"].get("clients", []) if item.get("enable", True)
+            item["id"] for item in config.frontend_clients() if item.get("enable", True)
         ]
 
         fallback_activity = None
         if len(enabled_client_ids) == 1 and activity:
             fallback_activity = max(activity.values(), key=lambda item: item["last_seen_dt"])
 
-        for item in inbound["settings"].get("clients", []):
+        for item in config.frontend_clients():
             client_id = item["id"]
             client_meta = meta.get("clients", {}).get(client_id, {})
             last_seen = client_meta.get("last_seen", "")
@@ -126,11 +126,10 @@ class XrayFrontendService:
 
         config = self.frontend_repo.read_config()
         frontend = self.frontend_repo.get_frontend_config()
-        inbound = next(item for item in config["inbounds"] if item.get("tag") == "frontend-in")
-        reality = inbound["streamSettings"]["realitySettings"]
+        reality = config.frontend_inbound()["streamSettings"]["realitySettings"]
         existing_emails = {
             item.get("email", "").strip().casefold()
-            for item in inbound["settings"].get("clients", [])
+            for item in config.frontend_clients()
             if item.get("email")
         }
         if name.casefold() in existing_emails:
@@ -141,7 +140,7 @@ class XrayFrontendService:
         reality.setdefault("shortIds", [])
         if short_id not in reality["shortIds"]:
             reality["shortIds"].append(short_id)
-        inbound["settings"].setdefault("clients", []).append({"id": client_id, "email": name})
+        config.set_frontend_clients([*config.frontend_clients(), {"id": client_id, "email": name}])
         apply_result = self.frontend_repo.apply_config(config)
         if not apply_result.ready:
             raise ControlPlaneError(
@@ -167,14 +166,9 @@ class XrayFrontendService:
 
     def delete_client(self, client_id: str) -> bool:
         config = self.frontend_repo.read_config()
-        inbound = next(item for item in config["inbounds"] if item.get("tag") == "frontend-in")
-        before = len(inbound["settings"].get("clients", []))
-        inbound["settings"]["clients"] = [
-            item
-            for item in inbound["settings"].get("clients", [])
-            if item.get("id") != client_id
-        ]
-        if len(inbound["settings"]["clients"]) == before:
+        before = len(config.frontend_clients())
+        config.set_frontend_clients([item for item in config.frontend_clients() if item.get("id") != client_id])
+        if len(config.frontend_clients()) == before:
             return False
         apply_result = self.frontend_repo.apply_config(config)
         if not apply_result.ready:
@@ -190,9 +184,8 @@ class XrayFrontendService:
 
     def set_client_enabled(self, client_id: str, enabled: bool) -> bool:
         config = self.frontend_repo.read_config()
-        inbound = next(item for item in config["inbounds"] if item.get("tag") == "frontend-in")
         target = next(
-            (item for item in inbound["settings"].get("clients", []) if item.get("id") == client_id),
+            (item for item in config.frontend_clients() if item.get("id") == client_id),
             None,
         )
         if target is None:
@@ -290,10 +283,10 @@ class XrayFrontendService:
             )
         return self.frontend_repo.get_relay_config_from_frontend()
 
-    def read_candidate_frontend_config(self, command: UpdateFrontendConfigCommand) -> dict:
+    def read_candidate_frontend_config(self, command: UpdateFrontendConfigCommand) -> XrayConfigAccessor:
         config = self.frontend_repo.read_config()
-        inbound = next(item for item in config["inbounds"] if item.get("tag") == "frontend-in")
-        outbound = next(item for item in config["outbounds"] if item.get("tag") == "to-relay")
+        inbound = config.frontend_inbound()
+        vnext = config.relay_outbound()["settings"]["vnext"][0]
         reality = inbound["streamSettings"]["realitySettings"]
         inbound["port"] = command.port
         reality["target"] = command.target
@@ -305,16 +298,16 @@ class XrayFrontendService:
         reality.setdefault("settings", {})["fingerprint"] = command.fingerprint
         reality.setdefault("settings", {})["spiderX"] = command.spider_x
         reality["shortIds"] = command.short_ids
-        outbound["settings"]["vnext"][0]["address"] = command.relay_host
-        outbound["settings"]["vnext"][0]["port"] = command.relay_port
+        vnext["address"] = command.relay_host
+        vnext["port"] = command.relay_port
         return config
 
-    def read_candidate_relay_config(self, command: UpdateRelayConfigCommand) -> dict:
+    def read_candidate_relay_config(self, command: UpdateRelayConfigCommand) -> XrayConfigAccessor:
         config = self.frontend_repo.read_config()
-        outbound = next(item for item in config["outbounds"] if item.get("tag") == "to-relay")
-        outbound["settings"]["vnext"][0]["address"] = command.public_host
-        outbound["settings"]["vnext"][0]["port"] = command.listen_port
-        outbound["settings"]["vnext"][0]["users"][0]["id"] = command.relay_uuid
+        vnext = config.relay_outbound()["settings"]["vnext"][0]
+        vnext["address"] = command.public_host
+        vnext["port"] = command.listen_port
+        vnext["users"][0]["id"] = command.relay_uuid
         return config
 
     def build_client_uri(self, host: str, client: FrontendClient, frontend_config: FrontendConfigResult) -> str:

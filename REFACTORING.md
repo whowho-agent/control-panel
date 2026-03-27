@@ -273,12 +273,12 @@ class RelayNodeRepo:
 - [x] Сервис обновлён на новые domain-классы
 - [x] Тесты зелёные
 
-### Фаза 3
-- [ ] `domain/xray_config.py` с `XrayConfigAccessor`
-- [ ] Тесты для accessor (все теги, edge cases)
-- [ ] `XrayFrontendRepo` переведён на accessor
-- [ ] Голые dict-навигации убраны
-- [ ] Тесты зелёные
+### Фаза 3 ✓
+- [x] `domain/xray_config.py` с `XrayConfigAccessor`
+- [x] Тесты для accessor (все теги, edge cases)
+- [x] `XrayFrontendRepo` переведён на accessor
+- [x] Голые dict-навигации убраны
+- [x] Тесты зелёные
 
 ### Фаза 4
 - [ ] `services/client_service.py` + тесты
