@@ -48,6 +48,7 @@ class ClientService:
         ]
 
         activity_by_email = {v["email"]: v for v in activity.values() if v.get("email")}
+        activity_by_ip = {v["source_ip"]: v for v in activity.values() if v.get("source_ip")}
 
         fallback_activity = None
         if len(enabled_client_ids) == 1 and activity:
@@ -61,7 +62,7 @@ class ClientService:
             email = item.get("email", "")
             matched_activity = (
                 activity_by_email.get(email)
-                or (activity.get(source_ip) if source_ip else None)
+                or (activity_by_ip.get(source_ip) if source_ip else None)
             )
 
             if matched_activity:

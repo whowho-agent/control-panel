@@ -308,9 +308,11 @@ def test_parse_activity_handles_no_millis_and_tcp_prefix(tmp_path: Path) -> None
 
     result = repo.parse_activity()
 
-    assert "5.228.113.144" in result
-    assert result["5.228.113.144"]["source_ip"] == "5.228.113.144"
-    # last_seen should be the later of the two entries
-    assert "21:26:05" in result["5.228.113.144"]["last_seen"]
+    # keyed by email when available
+    assert "client-a" in result
+    assert "client-b" in result
+    assert result["client-a"]["source_ip"] == "5.228.113.144"
+    assert result["client-b"]["source_ip"] == "5.228.113.144"
+    assert "21:26:05" in result["client-b"]["last_seen"]
     # other-inbound entries should be ignored
     assert "1.2.3.4" not in result

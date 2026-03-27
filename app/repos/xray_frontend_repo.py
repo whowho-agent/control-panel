@@ -249,8 +249,8 @@ class XrayFrontendRepo:
         line_re = re.compile(
             r"^(?P<ts>\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}(?:\.\d+)?) "
             r"from (?:(?:tcp|udp):)?(?P<ip>[\d.]+):\d+ accepted .*? \[(?P<inbound>[^\]]+) ->"
-            r".*?(?:\s+email:\s+(?P<email>\S+))?"
         )
+        email_re = re.compile(r"email:\s+(\S+)")
         lines = self.access_log_path.read_text(errors="ignore").splitlines()[-2000:]
         for line in lines:
             match = line_re.search(line)
@@ -260,10 +260,12 @@ class XrayFrontendRepo:
             fmt = "%Y/%m/%d %H:%M:%S.%f" if "." in ts else "%Y/%m/%d %H:%M:%S"
             seen_at = datetime.strptime(ts, fmt).replace(tzinfo=timezone.utc)
             ip = match.group("ip")
-            email = match.group("email") or ""
-            previous = result.get(ip)
+            em = email_re.search(line)
+            email = em.group(1) if em else ""
+            key = email if email else ip
+            previous = result.get(key)
             if not previous or seen_at > previous["last_seen_dt"]:
-                result[ip] = {
+                result[key] = {
                     "last_seen_dt": seen_at,
                     "last_seen": seen_at.isoformat().replace("+00:00", "Z"),
                     "source_ip": ip,
