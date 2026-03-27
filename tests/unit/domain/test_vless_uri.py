@@ -1,7 +1,5 @@
 from urllib.parse import parse_qs, quote, urlparse
 
-import pytest
-
 from app.domain.vless_uri import VlessUriBuilder
 from app.domain.xray_frontend import FrontendClient, FrontendConfigResult
 

@@ -1,4 +1,3 @@
-import pytest
 
 from app.domain.transport_mode import TransportMode
 

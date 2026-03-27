@@ -1,5 +1,5 @@
 import httpx
-import pytest
+
 from app.repos.relay_node_repo import RelayNodeRepo
 
 

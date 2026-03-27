@@ -1,7 +1,13 @@
 from fastapi.testclient import TestClient
 
 from app.api.deps import get_xray_frontend_service
-from app.domain.xray_frontend import FrontendApplyResult, FrontendClient, FrontendConfigResult, RelayConfigResult, TopologyHealthResult
+from app.domain.xray_frontend import (
+    FrontendApplyResult,
+    FrontendClient,
+    FrontendConfigResult,
+    RelayConfigResult,
+    TopologyHealthResult,
+)
 from app.main import app
 
 

@@ -1,8 +1,6 @@
 import json
 from pathlib import Path
 
-import pytest
-
 from deploy.bootstrap.restore_clients import restore_clients
 
 
