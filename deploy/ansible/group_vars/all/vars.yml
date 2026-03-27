@@ -8,7 +8,5 @@ xray_frontend_target: mitigator.ru:443
 xray_frontend_fingerprint: firefox
 xray_relay_private_host: 10.10.10.2
 xray_relay_port: 9443
-xray_relay_ssh_user: claude-agent
-xray_relay_ssh_key_source: /home/claude-agent/.ssh/id_ed25519_egress_deploy
-xray_relay_ssh_private_key_local_path: /tmp/claude_agent_key
+relay_agent_port: 9100
 xray_admin_user: admin

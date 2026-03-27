@@ -1,6 +1,7 @@
 import logging
 import socket
-import subprocess
+
+import httpx
 
 logger = logging.getLogger(__name__)
 
@@ -10,17 +11,11 @@ class RelayNodeRepo:
         self,
         host: str,
         port: int,
-        service_name: str,
-        ssh_key_path: str,
-        ssh_user: str,
-        ssh_host: str = "",
+        agent_url: str,
     ) -> None:
         self.host = host
         self.port = port
-        self.service_name = service_name
-        self.ssh_key_path = ssh_key_path
-        self.ssh_user = ssh_user
-        self.ssh_host = ssh_host or host
+        self._agent_url = agent_url.rstrip("/")
 
     def is_port_reachable(self, timeout: int = 2) -> bool:
         try:
@@ -30,51 +25,17 @@ class RelayNodeRepo:
             return False
 
     def get_remote_service_status(self) -> str:
-        result = subprocess.run(
-            self._ssh_command(f"sudo systemctl is-active {self.service_name}"),
-            check=False,
-            capture_output=True,
-            text=True,
-            timeout=10,
-        )
-        if result.returncode == 0 and result.stdout.strip():
-            return result.stdout.strip()
-        if result.returncode != 0:
-            logger.warning(
-                "get_remote_service_status: SSH error (rc=%d) — %s",
-                result.returncode,
-                (result.stderr or result.stdout or "").strip(),
-            )
-        return "unknown"
+        try:
+            r = httpx.get(f"{self._agent_url}/status", timeout=3.0)
+            return r.json().get("service", "unknown")
+        except Exception as exc:
+            logger.warning("get_remote_service_status: agent error — %s", exc)
+            return "unknown"
 
     def probe_observed_public_ip(self) -> str:
-        result = subprocess.run(
-            self._ssh_command("curl -4fsS https://api.ipify.org"),
-            check=False,
-            capture_output=True,
-            text=True,
-            timeout=10,
-        )
-        if result.returncode == 0:
-            return result.stdout.strip()
-        logger.warning(
-            "probe_observed_public_ip: SSH error (rc=%d) — %s",
-            result.returncode,
-            (result.stderr or result.stdout or "").strip(),
-        )
-        return ""
-
-    def _ssh_command(self, remote_command: str) -> list[str]:
-        return [
-            "ssh",
-            "-i",
-            self.ssh_key_path,
-            "-o",
-            "BatchMode=yes",
-            "-o",
-            "ConnectTimeout=3",
-            "-o",
-            "StrictHostKeyChecking=accept-new",
-            f"{self.ssh_user}@{self.ssh_host}",
-            remote_command,
-        ]
+        try:
+            r = httpx.get(f"{self._agent_url}/status", timeout=3.0)
+            return r.json().get("egress_ip", "")
+        except Exception as exc:
+            logger.warning("probe_observed_public_ip: agent error — %s", exc)
+            return ""

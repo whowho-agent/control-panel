@@ -1,0 +1,54 @@
+---
+- name: Create relay-agent system user
+  user:
+    name: "{{ relay_agent_user }}"
+    system: true
+    shell: /usr/sbin/nologin
+    create_home: false
+
+- name: Create install directory
+  file:
+    path: "{{ relay_agent_install_dir }}"
+    state: directory
+    owner: "{{ relay_agent_user }}"
+    group: "{{ relay_agent_user }}"
+    mode: "0755"
+
+- name: Copy relay-agent source
+  copy:
+    src: "{{ playbook_dir }}/../../../relay-agent/main.py"
+    dest: "{{ relay_agent_install_dir }}/main.py"
+    owner: "{{ relay_agent_user }}"
+    group: "{{ relay_agent_user }}"
+    mode: "0644"
+  notify: restart relay-agent
+
+- name: Copy requirements
+  copy:
+    src: "{{ playbook_dir }}/../../../relay-agent/requirements.txt"
+    dest: "{{ relay_agent_install_dir }}/requirements.txt"
+    owner: "{{ relay_agent_user }}"
+    group: "{{ relay_agent_user }}"
+    mode: "0644"
+
+- name: Install Python dependencies
+  pip:
+    requirements: "{{ relay_agent_install_dir }}/requirements.txt"
+    extra_args: "--break-system-packages"
+  become: true
+
+- name: Install systemd service
+  template:
+    src: relay-agent.service.j2
+    dest: /etc/systemd/system/relay-agent.service
+    mode: "0644"
+  notify:
+    - reload systemd
+    - restart relay-agent
+
+- name: Enable and start relay-agent
+  systemd:
+    name: relay-agent
+    enabled: true
+    state: started
+    daemon_reload: true

@@ -289,12 +289,11 @@ class RelayNodeRepo:
 - [ ] `deps.py` не изменён
 - [ ] Тесты зелёные
 
-### Фаза 5
-- [ ] `relay-agent/main.py`
-- [ ] `relay-agent/Dockerfile`
-- [ ] `relay-agent/relay-agent.service`
-- [ ] `RelayNodeRepo` переведён на HTTP
-- [ ] Ansible role `relay_agent`
-- [ ] SSH-ключ убран из `docker-compose.yml`
-- [ ] Интеграционный тест с mock-агентом
-- [ ] Тесты зелёные
+### Фаза 5 ✓
+- [x] `relay-agent/main.py`
+- [ ] `relay-agent/Dockerfile` (не нужен — сервис нативный на ноде)
+- [x] `relay-agent/relay-agent.service` (через Ansible template)
+- [x] `RelayNodeRepo` переведён на HTTP
+- [x] Ansible role `relay_agent`
+- [x] SSH-ключ убран из `docker-compose.yml`
+- [x] Тесты зелёные

@@ -35,3 +35,7 @@
       vars:
         deploy_validate_service_name: xray-relay
         deploy_validate_service_port: "{{ xray_relay_port }}"
+
+    - name: Deploy relay-agent sidecar
+      include_role:
+        name: relay_agent

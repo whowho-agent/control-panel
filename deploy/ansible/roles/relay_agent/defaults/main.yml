@@ -1,0 +1,4 @@
+relay_agent_port: 9100
+relay_agent_install_dir: /opt/relay-agent
+relay_agent_user: relay-agent
+relay_agent_python: /usr/bin/python3

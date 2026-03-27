@@ -33,12 +33,10 @@ class Settings:
         )
         self.relay_host = os.getenv("XRAY_RELAY_HOST", "relay.example.com")
         self.relay_port = int(os.getenv("XRAY_RELAY_PORT", "9443"))
-        self.relay_service_name = os.getenv("XRAY_RELAY_SERVICE_NAME", "xray-relay")
-        self.relay_ssh_key_path = os.getenv(
-            "XRAY_RELAY_SSH_KEY_PATH",
-            "/run/secrets/relay_ssh_key",
+        self.relay_agent_url = os.getenv(
+            "XRAY_RELAY_AGENT_URL",
+            f"http://{self.relay_host}:9100",
         )
-        self.relay_ssh_user = os.getenv("XRAY_RELAY_SSH_USER", "deploy")
         self.online_window_minutes = int(os.getenv("XRAY_ONLINE_WINDOW_MINUTES", "5"))
         self.expected_egress_ip = os.getenv("XRAY_EXPECTED_EGRESS_IP", "203.0.113.10")
         self.admin_user = os.getenv("XRAY_ADMIN_USER", "admin")
@@ -86,10 +84,7 @@ def get_xray_frontend_service(settings: Settings = Depends(get_settings)) -> Xra
     relay_repo = RelayNodeRepo(
         host=settings.relay_host,
         port=settings.relay_port,
-        service_name=settings.relay_service_name,
-        ssh_key_path=settings.relay_ssh_key_path,
-        ssh_user=settings.relay_ssh_user,
-        ssh_host=settings.relay_public_host or settings.relay_host,
+        agent_url=settings.relay_agent_url,
     )
     return XrayFrontendService(
         frontend_repo=frontend_repo,
