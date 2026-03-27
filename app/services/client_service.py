@@ -47,6 +47,8 @@ class ClientService:
             item["id"] for item in config.frontend_clients() if item.get("enable", True)
         ]
 
+        activity_by_email = {v["email"]: v for v in activity.values() if v.get("email")}
+
         fallback_activity = None
         if len(enabled_client_ids) == 1 and activity:
             fallback_activity = max(activity.values(), key=lambda item: item["last_seen_dt"])
@@ -56,7 +58,11 @@ class ClientService:
             client_meta = meta.get("clients", {}).get(client_id, {})
             last_seen = client_meta.get("last_seen", "")
             source_ip = client_meta.get("source_ip", "")
-            matched_activity = activity.get(source_ip) if source_ip else None
+            email = item.get("email", "")
+            matched_activity = (
+                activity_by_email.get(email)
+                or (activity.get(source_ip) if source_ip else None)
+            )
 
             if matched_activity:
                 last_seen = matched_activity["last_seen"]
