@@ -64,10 +64,12 @@ def test_set_frontend_clients_mutation_reflected_in_to_dict() -> None:
     assert inbound["settings"]["clients"] == [{"id": "x"}]
 
 
-def test_to_dict_returns_original_raw() -> None:
+def test_to_dict_returns_deep_copy() -> None:
     raw = _make_config()
     acc = XrayConfigAccessor(raw)
-    assert acc.to_dict() is raw
+    result = acc.to_dict()
+    assert result == raw
+    assert result is not raw  # must be a copy, not the internal reference
 
 
 def test_frontend_inbound_raises_key_error_when_tag_missing() -> None:

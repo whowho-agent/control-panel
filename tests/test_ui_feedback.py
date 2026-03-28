@@ -90,11 +90,13 @@ def test_clients_page_renders_flash_messages() -> None:
     app.dependency_overrides[get_xray_frontend_service] = lambda: FakeUiService()
     client = TestClient(app)
 
-    response = client.get("/clients?success=client_created&error=boom", auth=("admin", "change-me"))
+    response = client.get(
+        "/clients?success=client_created&error=client_not_found", auth=("admin", "change-me")
+    )
 
     assert response.status_code == 200
     assert "Client created and frontend is ready." in response.text
-    assert "boom" in response.text
+    assert "Client not found." in response.text
     app.dependency_overrides.clear()
 
 

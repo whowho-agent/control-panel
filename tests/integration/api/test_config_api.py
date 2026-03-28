@@ -82,7 +82,6 @@ def test_get_frontend_config_returns_runtime_values() -> None:
     assert response.status_code == 200
     assert response.json()["port"] == 9444
     assert response.json()["relay_host"] == "72.56.109.197"
-    app.dependency_overrides.clear()
 
 
 def test_validate_frontend_config_returns_preflight_status() -> None:
@@ -107,7 +106,6 @@ def test_validate_frontend_config_returns_preflight_status() -> None:
     assert response.status_code == 200
     assert response.json()["preflight_ok"] is True
     assert response.json()["status"] == "validated"
-    app.dependency_overrides.clear()
 
 
 def test_update_frontend_config_returns_updated_payload() -> None:
@@ -132,7 +130,6 @@ def test_update_frontend_config_returns_updated_payload() -> None:
     assert response.status_code == 200
     assert response.json()["port"] == 9555
     assert response.json()["server_name"] == "example.org"
-    app.dependency_overrides.clear()
 
 
 def test_get_relay_config_returns_runtime_values() -> None:
@@ -147,7 +144,6 @@ def test_get_relay_config_returns_runtime_values() -> None:
     assert response.status_code == 200
     assert response.json()["host"] == "72.56.109.197"
     assert response.json()["uuid"] == "00000000-0000-0000-0000-000000000001"
-    app.dependency_overrides.clear()
 
 
 def test_validate_relay_config_returns_preflight_status() -> None:
@@ -167,7 +163,6 @@ def test_validate_relay_config_returns_preflight_status() -> None:
     assert response.status_code == 200
     assert response.json()["preflight_ok"] is True
     assert response.json()["status"] == "validated"
-    app.dependency_overrides.clear()
 
 
 def test_update_relay_config_returns_updated_payload() -> None:
@@ -188,4 +183,3 @@ def test_update_relay_config_returns_updated_payload() -> None:
     assert response.json()["host"] == "203.0.113.5"
     assert response.json()["port"] == 9777
     assert response.json()["uuid"] == "00000000-0000-0000-0000-000000000002"
-    app.dependency_overrides.clear()

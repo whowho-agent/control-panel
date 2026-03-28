@@ -29,12 +29,12 @@ class FakeClientsService:
         self.clients = [item for item in self.clients if item.id != client_id]
         return len(self.clients) != before
 
-    def set_client_enabled(self, client_id: str, enabled: bool) -> bool:
+    def set_client_enabled(self, client_id: str, enabled: bool) -> FrontendClient | None:
         target = next((item for item in self.clients if item.id == client_id), None)
         if target is None:
-            return False
+            return None
         target.enabled = enabled
-        return True
+        return target
 
 
 def test_create_client_returns_201_and_uri() -> None:
@@ -50,7 +50,6 @@ def test_create_client_returns_201_and_uri() -> None:
     assert response.status_code == 201
     assert response.json()["client"]["name"] == "bravo"
     assert response.json()["uri"] == "vless://client-2@test:9444"
-    app.dependency_overrides.clear()
 
 
 def test_create_client_returns_409_on_duplicate_name() -> None:
@@ -69,7 +68,6 @@ def test_create_client_returns_409_on_duplicate_name() -> None:
 
     assert response.status_code == 409
     assert response.json()["detail"] == "client_name_exists:alpha"
-    app.dependency_overrides.clear()
 
 
 def test_delete_client_returns_204() -> None:
@@ -82,7 +80,6 @@ def test_delete_client_returns_204() -> None:
     )
 
     assert response.status_code == 204
-    app.dependency_overrides.clear()
 
 
 def test_enable_client_returns_updated_client() -> None:
@@ -96,7 +93,6 @@ def test_enable_client_returns_updated_client() -> None:
 
     assert response.status_code == 200
     assert response.json()["enabled"] is True
-    app.dependency_overrides.clear()
 
 
 def test_disable_client_returns_updated_client() -> None:
@@ -110,4 +106,3 @@ def test_disable_client_returns_updated_client() -> None:
 
     assert response.status_code == 200
     assert response.json()["enabled"] is False
-    app.dependency_overrides.clear()

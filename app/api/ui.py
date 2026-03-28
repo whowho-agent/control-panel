@@ -37,7 +37,7 @@ def _humanize_message(message: str) -> str:
         "relay_config_valid": "Relay candidate config passed preflight validation. No restart was performed.",
         "client_not_found": "Client not found.",
     }
-    return mapping.get(message, message)
+    return mapping.get(message, "")
 
 
 def _redirect_with_message(path: str, *, success: str = "", error: str = "") -> RedirectResponse:
@@ -129,7 +129,7 @@ def client_qr(
     if client is None:
         return Response(status_code=404)
     uri = service.build_client_uri(host, client, frontend)
-    process = subprocess.run(["qrencode", "-o", "-", "-s", "8", "-m", "2", uri], capture_output=True)
+    process = subprocess.run(["qrencode", "-o", "-", "-s", "8", "-m", "2", uri], capture_output=True, timeout=10)
     if process.returncode != 0:
         return Response(status_code=500)
     return Response(content=process.stdout, media_type="image/png")

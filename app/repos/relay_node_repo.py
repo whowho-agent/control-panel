@@ -28,7 +28,7 @@ class RelayNodeRepo:
         try:
             r = httpx.get(f"{self._agent_url}/status", timeout=3.0)
             return r.json().get("service", "unknown")
-        except Exception as exc:
+        except (httpx.HTTPError, OSError) as exc:
             logger.warning("get_remote_service_status: agent error — %s", exc)
             return "unknown"
 
@@ -36,6 +36,6 @@ class RelayNodeRepo:
         try:
             r = httpx.get(f"{self._agent_url}/status", timeout=3.0)
             return r.json().get("egress_ip", "")
-        except Exception as exc:
+        except (httpx.HTTPError, OSError) as exc:
             logger.warning("probe_observed_public_ip: agent error — %s", exc)
             return ""

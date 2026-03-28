@@ -258,9 +258,10 @@ def test_delete_client_removes_client_from_config_and_meta(tmp_path: Path) -> No
 def test_set_client_enabled_sets_false(tmp_path: Path) -> None:
     service, frontend_repo, _, _ = build_service(tmp_path)
 
-    updated = service.set_client_enabled("client-1", False)
+    result = service.set_client_enabled("client-1", False)
 
-    assert updated is True
+    assert result is not None
+    assert result.enabled is False
     assert frontend_repo.config["inbounds"][0]["settings"]["clients"][0]["enable"] is False
     assert frontend_repo.restart_calls == 1
 
@@ -269,9 +270,10 @@ def test_set_client_enabled_sets_true(tmp_path: Path) -> None:
     service, frontend_repo, _, _ = build_service(tmp_path)
     frontend_repo.config["inbounds"][0]["settings"]["clients"][0]["enable"] = False
 
-    updated = service.set_client_enabled("client-1", True)
+    result = service.set_client_enabled("client-1", True)
 
-    assert updated is True
+    assert result is not None
+    assert result.enabled is True
     assert frontend_repo.config["inbounds"][0]["settings"]["clients"][0]["enable"] is True
 
 

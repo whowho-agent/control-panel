@@ -78,6 +78,7 @@ def test_create_client_updates_live_runtime_files(tmp_path: Path, monkeypatch) -
     monkeypatch.setenv("XRAY_ADMIN_USER", "admin")
     monkeypatch.setenv("XRAY_ADMIN_PASSWORD", "change-me")
     deps.get_settings.cache_clear()
+    deps.get_xray_frontend_service.cache_clear()
 
     commands: list[list[str]] = []
 

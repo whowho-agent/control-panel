@@ -77,6 +77,7 @@ def test_update_frontend_config_updates_live_runtime_and_restarts(tmp_path, monk
     monkeypatch.setenv("XRAY_ADMIN_USER", "admin")
     monkeypatch.setenv("XRAY_ADMIN_PASSWORD", "change-me")
     deps.get_settings.cache_clear()
+    deps.get_xray_frontend_service.cache_clear()
 
     commands: list[list[str]] = []
 

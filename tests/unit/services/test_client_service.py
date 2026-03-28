@@ -156,10 +156,12 @@ def test_delete_returns_false_for_unknown_id(tmp_path: Path) -> None:
 
 def test_set_enabled_false(tmp_path: Path) -> None:
     svc, repo, _ = build_service(tmp_path)
-    assert svc.set_enabled("client-1", False) is True
+    result = svc.set_enabled("client-1", False)
+    assert result is not None
+    assert result.enabled is False
     assert repo.config["inbounds"][0]["settings"]["clients"][0]["enable"] is False
 
 
-def test_set_enabled_returns_false_for_unknown_id(tmp_path: Path) -> None:
+def test_set_enabled_returns_none_for_unknown_id(tmp_path: Path) -> None:
     svc, _, _ = build_service(tmp_path)
-    assert svc.set_enabled("no-such-id", True) is False
+    assert svc.set_enabled("no-such-id", True) is None
