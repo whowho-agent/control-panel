@@ -17,6 +17,40 @@
     {% endif %}
   </div>
 </div>
+<div class="card" style="margin-bottom:16px;">
+  <h2 style="margin-top:0;">Sniffing</h2>
+  <form method="post" action="/config/sniffing">
+    <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:center;">
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+        <input type="checkbox" name="sniffing_enabled" value="on" {% if sniffing.enabled %}checked{% endif %} />
+        Enabled
+      </label>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+        <input type="checkbox" name="sniffing_http" value="on" {% if 'http' in sniffing.dest_override %}checked{% endif %} />
+        HTTP
+      </label>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+        <input type="checkbox" name="sniffing_tls" value="on" {% if 'tls' in sniffing.dest_override %}checked{% endif %} />
+        TLS
+      </label>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+        <input type="checkbox" name="sniffing_quic" value="on" {% if 'quic' in sniffing.dest_override %}checked{% endif %} />
+        QUIC
+      </label>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+        <input type="checkbox" name="sniffing_fakedns" value="on" {% if 'fakedns' in sniffing.dest_override %}checked{% endif %} />
+        FakeDNS
+      </label>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+        <input type="checkbox" name="sniffing_route_only" value="on" {% if sniffing.route_only %}checked{% endif %} />
+        Route only
+      </label>
+    </div>
+    <div style="margin-top:12px;">
+      <button type="submit">Save + restart</button>
+    </div>
+  </form>
+</div>
 <div class="grid">
   <div class="card" style="grid-column:span 7;">
     <h2>Frontend config</h2>

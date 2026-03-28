@@ -7,11 +7,12 @@ from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
 
 from app.api.deps import get_xray_frontend_service, require_basic_auth
-from app.api.schemas import CreateClientInput, UpdateFrontendConfigInput, UpdateRelayConfigInput
+from app.api.schemas import CreateClientInput, UpdateFrontendConfigInput, UpdateRelayConfigInput, UpdateSniffingInput
 from app.domain.xray_frontend import ControlPlaneError, CreateFrontendClientCommand
 from app.domain.xray_frontend_config import (
     UpdateFrontendConfigCommand,
     UpdateRelayConfigCommand,
+    UpdateSniffingCommand,
 )
 from app.services.xray_frontend_service import XrayFrontendService
 
@@ -31,6 +32,7 @@ def _humanize_message(message: str) -> str:
         "client_disabled": "Client disabled and frontend is ready.",
         "frontend_config_saved": "Frontend config applied successfully. Preflight passed, restart succeeded, readiness is green.",
         "relay_config_saved": "Relay config applied successfully. Preflight passed, restart succeeded, readiness is green.",
+        "sniffing_config_saved": "Sniffing config applied successfully.",
         "frontend_config_valid": "Frontend candidate config passed preflight validation. No restart was performed.",
         "relay_config_valid": "Relay candidate config passed preflight validation. No restart was performed.",
         "client_not_found": "Client not found.",
@@ -182,6 +184,7 @@ def config_page(
     frontend = service.get_frontend_config()
     relay = service.get_relay_config()
     topology = service.get_topology_health()
+    sniffing = service.get_sniffing_config()
     return templates.TemplateResponse(
         request,
         "config.html",
@@ -189,6 +192,7 @@ def config_page(
             "frontend": frontend,
             "relay": relay,
             "topology": topology,
+            "sniffing": sniffing,
             "success_message": _humanize_message(_query_message(request, "success")),
             "error_message": _humanize_message(_query_message(request, "error")),
         },
@@ -277,6 +281,34 @@ def validate_relay_config(
     if not result.preflight_ok:
         return _redirect_with_message("/config", error=result.message)
     return _redirect_with_message("/config", success="relay_config_valid")
+
+
+@router.post("/config/sniffing")
+def update_sniffing_config(
+    sniffing_enabled: str = Form(default=""),
+    sniffing_http: str = Form(default=""),
+    sniffing_tls: str = Form(default=""),
+    sniffing_quic: str = Form(default=""),
+    sniffing_fakedns: str = Form(default=""),
+    sniffing_route_only: str = Form(default=""),
+    _: str = Depends(require_basic_auth),
+    service: XrayFrontendService = Depends(get_xray_frontend_service),
+) -> RedirectResponse:
+    dest_override = [
+        proto
+        for proto, val in [("http", sniffing_http), ("tls", sniffing_tls), ("quic", sniffing_quic), ("fakedns", sniffing_fakedns)]
+        if val
+    ]
+    try:
+        payload = UpdateSniffingInput(
+            enabled=bool(sniffing_enabled),
+            dest_override=dest_override,
+            route_only=bool(sniffing_route_only),
+        )
+        service.update_sniffing_config(UpdateSniffingCommand(**payload.model_dump()))
+    except (ValidationError, ControlPlaneError) as exc:
+        return _redirect_with_message("/config", error=str(exc))
+    return _redirect_with_message("/config", success="sniffing_config_saved")
 
 
 @router.post("/config/relay")

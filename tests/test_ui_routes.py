@@ -6,6 +6,7 @@ from app.domain.xray_frontend import (
     FrontendClient,
     FrontendConfigResult,
     RelayConfigResult,
+    SniffingConfigResult,
     TopologyHealthResult,
 )
 from app.main import app
@@ -78,6 +79,12 @@ class FakeUiService:
 
     def validate_relay_config(self, command):
         return FrontendApplyResult(True, False, False, "validated", "Config validation passed")
+
+    def get_sniffing_config(self):
+        return SniffingConfigResult(enabled=False, dest_override=[], route_only=False)
+
+    def update_sniffing_config(self, command):
+        return self.get_sniffing_config()
 
 
 def test_clients_page_renders_with_basic_auth() -> None:
