@@ -46,15 +46,15 @@
         <td style="white-space:nowrap;">
           {% if row.client.enabled %}
           <form method="post" action="/clients/{{ row.client.id }}/disable" style="display:inline-block;margin-right:6px;">
-            <button class="secondary" type="submit">Disable</button>
+            <button class="secondary sm" type="submit">Disable</button>
           </form>
           {% else %}
           <form method="post" action="/clients/{{ row.client.id }}/enable" style="display:inline-block;margin-right:6px;">
-            <button type="submit">Enable</button>
+            <button class="success sm" type="submit">Enable</button>
           </form>
           {% endif %}
           <form method="post" action="/clients/{{ row.client.id }}/delete" onsubmit="return confirm('Delete client {{ row.client.name }}? This will validate, restart, and verify readiness before the change is kept.')" style="display:inline-block;">
-            <button class="danger" type="submit">Delete</button>
+            <button class="danger sm" type="submit">Delete</button>
           </form>
         </td>
       </tr>
@@ -62,12 +62,11 @@
     </tbody>
   </table>
 </div>
-<div class="card" style="margin-top:16px;">
-  {% if not paused %}<meta http-equiv="refresh" content="10;url=/clients?minutes={{ minutes }}">{% endif %}
+<div class="card" style="margin-top:16px;" id="activity-ctrl" data-paused="{{ 'true' if paused else 'false' }}" data-minutes="{{ minutes }}">
   <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
     <h2 style="margin:0;">Activity Log</h2>
     <div style="display:flex;gap:6px;">
-      <a href="/clients?minutes=1{% if paused %}&paused=1{% endif %}" class="nav" style="padding:4px 10px;font-size:12px;border-radius:6px;border:1px solid var(--line);background:{% if minutes==1 %}var(--panel2){% else %}transparent{% endif %};color:{% if minutes==1 %}var(--link){% else %}var(--text){% endif %};text-decoration:none;">1m</a>
+      <a href="/clients?minutes=1{% if paused %}&paused=1{% endif %}" style="padding:4px 10px;font-size:12px;border-radius:6px;border:1px solid var(--line);background:{% if minutes==1 %}var(--panel2){% else %}transparent{% endif %};color:{% if minutes==1 %}var(--link){% else %}var(--text){% endif %};text-decoration:none;">1m</a>
       <a href="/clients?minutes=3{% if paused %}&paused=1{% endif %}" style="padding:4px 10px;font-size:12px;border-radius:6px;border:1px solid var(--line);background:{% if minutes==3 %}var(--panel2){% else %}transparent{% endif %};color:{% if minutes==3 %}var(--link){% else %}var(--text){% endif %};text-decoration:none;">3m</a>
       <a href="/clients?minutes=5{% if paused %}&paused=1{% endif %}" style="padding:4px 10px;font-size:12px;border-radius:6px;border:1px solid var(--line);background:{% if minutes==5 %}var(--panel2){% else %}transparent{% endif %};color:{% if minutes==5 %}var(--link){% else %}var(--text){% endif %};text-decoration:none;">5m</a>
     </div>
@@ -85,4 +84,27 @@
   <div class="small">No activity in the last {{ minutes }} minute{{ 's' if minutes != 1 else '' }}.</div>
   {% endif %}
 </div>
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  var ctrl    = document.getElementById('activity-ctrl');
+  var paused  = ctrl.dataset.paused === 'true';
+  var minutes = ctrl.dataset.minutes;
+
+  // Restore scroll position after page reload
+  var saved = sessionStorage.getItem('clients_scroll');
+  if (saved) {
+    window.scrollTo(0, parseInt(saved, 10));
+    sessionStorage.removeItem('clients_scroll');
+  }
+
+  if (!paused) {
+    setInterval(function () {
+      sessionStorage.setItem('clients_scroll', window.scrollY);
+      window.location.href = '/clients?minutes=' + minutes;
+    }, 10000);
+  }
+})();
+</script>
 {% endblock %}

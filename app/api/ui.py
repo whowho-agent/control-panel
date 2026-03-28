@@ -75,8 +75,8 @@ def dashboard(
 @router.get("/clients", response_class=HTMLResponse)
 def clients_page(
     request: Request,
-    minutes: int = Query(default=3, ge=1, le=10),
-    paused: int = Query(default=0),
+    minutes: int = Query(default=1, ge=1, le=10),
+    paused: int = Query(default=1),
     _: str = Depends(require_basic_auth),
     service: XrayFrontendService = Depends(get_xray_frontend_service),
 ) -> HTMLResponse:

@@ -46,6 +46,10 @@
     button.danger { background:var(--danger); }
     button.secondary { background:transparent; border:1px solid var(--line); color:var(--text); }
     button.secondary:hover { border-color:var(--link); filter:none; }
+    button.success { background:var(--ok); color:#0b1020; }
+    button.sm { padding:5px 11px; font-size:12px; }
+    input[type="checkbox"] { width:15px; height:15px; accent-color:var(--accent); cursor:pointer; }
+    tbody tr:hover { background:rgba(255,255,255,.03); }
     code { font-size:12px; word-break:break-all; color:var(--muted); }
     a { color:var(--link); }
   </style>
@@ -66,5 +70,6 @@
     {% endif %}
     {% block content %}{% endblock %}
   </main>
+  {% block scripts %}{% endblock %}
 </body>
 </html>
