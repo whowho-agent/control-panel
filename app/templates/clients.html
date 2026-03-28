@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% set title = 'Clients — Xray Control Plane' %}
 {% block content %}
 <h1>Clients</h1>
 <div class="card mb-16">
@@ -40,6 +41,8 @@
         <td><code>{{ row.client.short_id }}</code></td>
         <td class="nowrap">
           <a href="{{ row.uri }}">URI</a>
+          &nbsp;
+          <button class="copy-btn" data-uri="{{ row.uri }}" title="Copy URI">copy</button>
           &nbsp;·&nbsp;
           <a href="/clients/{{ row.client.id }}/qr" target="_blank">QR</a>
         </td>
@@ -53,8 +56,10 @@
             <button class="success sm" type="submit">Enable</button>
           </form>
           {% endif %}
-          <form method="post" action="/clients/{{ row.client.id }}/delete" onsubmit="return confirm('Delete client {{ row.client.name }}? This will validate, restart, and verify readiness before the change is kept.')" style="display:inline-block;">
-            <button class="danger sm" type="submit">Delete</button>
+          <form id="del-{{ row.client.id }}" method="post" action="/clients/{{ row.client.id }}/delete" style="display:inline-block;">
+            <button class="danger sm" type="button"
+              data-form="del-{{ row.client.id }}"
+              data-name="{{ row.client.name }}">Delete</button>
           </form>
         </td>
       </tr>
@@ -62,6 +67,16 @@
     </tbody>
   </table>
 </div>
+
+<dialog id="delete-modal">
+  <h3>Delete client</h3>
+  <p id="delete-modal-text"></p>
+  <div class="dialog-actions">
+    <button class="secondary" id="delete-modal-cancel">Cancel</button>
+    <button class="danger" id="delete-modal-confirm">Delete</button>
+  </div>
+</dialog>
+
 <div class="card mt-16" id="activity-ctrl" data-paused="{{ 'true' if paused else 'false' }}" data-minutes="{{ minutes }}">
   <div class="flex items-center gap-12 flex-wrap" style="margin-bottom:12px;">
     <h2 style="margin:0;">Activity Log</h2>
@@ -88,6 +103,7 @@
 {% block scripts %}
 <script>
 (function () {
+  // --- activity log AJAX refresh ---
   var ctrl    = document.getElementById('activity-ctrl');
   var log     = document.getElementById('activity-log');
   var counter = document.querySelector('#activity-ctrl .small.ml-auto');
@@ -101,7 +117,6 @@
         if (log) {
           log.textContent = html;
         } else {
-          // no activity on load — swap in pre if lines appeared
           var pre = document.createElement('pre');
           pre.id = 'activity-log';
           pre.style.cssText = 'margin:0;font-size:12px;color:var(--muted);line-height:1.6;overflow-x:auto;white-space:pre;';
@@ -120,6 +135,43 @@
   if (!paused) {
     setInterval(refresh, 10000);
   }
+
+  // --- delete modal ---
+  var modal   = document.getElementById('delete-modal');
+  var modalTxt = document.getElementById('delete-modal-text');
+  var pendingForm = null;
+
+  document.querySelectorAll('[data-form]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      pendingForm = document.getElementById(btn.dataset.form);
+      modalTxt.textContent = 'Delete "' + btn.dataset.name + '"? This will validate, restart, and verify readiness before the change is kept.';
+      modal.showModal();
+    });
+  });
+
+  document.getElementById('delete-modal-cancel').addEventListener('click', function () {
+    modal.close();
+    pendingForm = null;
+  });
+
+  document.getElementById('delete-modal-confirm').addEventListener('click', function () {
+    if (pendingForm) pendingForm.submit();
+  });
+
+  modal.addEventListener('click', function (e) {
+    if (e.target === modal) { modal.close(); pendingForm = null; }
+  });
+
+  // --- copy URI ---
+  document.querySelectorAll('.copy-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      navigator.clipboard.writeText(btn.dataset.uri).then(function () {
+        var orig = btn.textContent;
+        btn.textContent = 'copied!';
+        setTimeout(function () { btn.textContent = orig; }, 1500);
+      });
+    });
+  });
 })();
 </script>
 {% endblock %}
