@@ -152,6 +152,34 @@ class UpdateFrontendConfigInput(BaseModel):
         return normalized
 
 
+_SNIFFING_ALLOWED = {"http", "tls", "quic", "fakedns"}
+
+
+class SniffingConfigOutput(BaseModel):
+    enabled: bool
+    dest_override: list[str]
+    route_only: bool
+
+
+class UpdateSniffingInput(BaseModel):
+    enabled: bool
+    dest_override: list[str]
+    route_only: bool = False
+
+    @field_validator("dest_override")
+    @classmethod
+    def validate_dest_override(cls, value: list[str]) -> list[str]:
+        seen: set[str] = set()
+        result = []
+        for item in value:
+            if item not in _SNIFFING_ALLOWED:
+                raise ValueError(f"invalid dest_override value '{item}'; allowed: {sorted(_SNIFFING_ALLOWED)}")
+            if item not in seen:
+                seen.add(item)
+                result.append(item)
+        return result
+
+
 class UpdateRelayConfigInput(BaseModel):
     public_host: str = Field(min_length=1, max_length=255)
     listen_port: int = Field(ge=1, le=65535)

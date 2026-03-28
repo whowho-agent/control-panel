@@ -10,12 +10,14 @@ from app.api.schemas import (
     CreateClientOutput,
     FrontendConfigOutput,
     RelayConfigOutput,
+    SniffingConfigOutput,
     TopologyHealthOutput,
     UpdateFrontendConfigInput,
     UpdateRelayConfigInput,
+    UpdateSniffingInput,
 )
 from app.domain.xray_frontend import ControlPlaneError, CreateFrontendClientCommand
-from app.domain.xray_frontend_config import UpdateFrontendConfigCommand, UpdateRelayConfigCommand
+from app.domain.xray_frontend_config import UpdateFrontendConfigCommand, UpdateRelayConfigCommand, UpdateSniffingCommand
 from app.services.xray_frontend_service import XrayFrontendService
 
 router = APIRouter(
@@ -157,3 +159,22 @@ def update_relay_config(
     except ControlPlaneError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
     return RelayConfigOutput(**asdict(result))
+
+
+@router.get("/config/sniffing", response_model=SniffingConfigOutput, summary="Get sniffing config")
+def get_sniffing_config(
+    service: XrayFrontendService = Depends(get_xray_frontend_service),
+) -> SniffingConfigOutput:
+    return SniffingConfigOutput(**asdict(service.get_sniffing_config()))
+
+
+@router.put("/config/sniffing", response_model=SniffingConfigOutput, summary="Update sniffing config")
+def update_sniffing_config(
+    payload: UpdateSniffingInput,
+    service: XrayFrontendService = Depends(get_xray_frontend_service),
+) -> SniffingConfigOutput:
+    try:
+        result = service.update_sniffing_config(UpdateSniffingCommand(**payload.model_dump()))
+    except ControlPlaneError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+    return SniffingConfigOutput(**asdict(result))

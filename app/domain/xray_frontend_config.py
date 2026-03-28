@@ -18,3 +18,10 @@ class UpdateRelayConfigCommand:
     public_host: str
     listen_port: int
     relay_uuid: str
+
+
+@dataclass(slots=True)
+class UpdateSniffingCommand:
+    enabled: bool
+    dest_override: list[str]
+    route_only: bool

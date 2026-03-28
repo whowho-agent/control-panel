@@ -30,5 +30,18 @@ class XrayConfigAccessor:
     def set_frontend_clients(self, clients: list[dict]) -> None:
         self.frontend_inbound()["settings"]["clients"] = clients
 
+    def get_sniffing(self) -> dict:
+        return self.frontend_inbound().get(
+            "sniffing",
+            {"enabled": False, "destOverride": [], "routeOnly": False},
+        )
+
+    def set_sniffing(self, enabled: bool, dest_override: list[str], route_only: bool) -> None:
+        self.frontend_inbound()["sniffing"] = {
+            "enabled": enabled,
+            "destOverride": dest_override,
+            "routeOnly": route_only,
+        }
+
     def to_dict(self) -> dict:
         return self._raw

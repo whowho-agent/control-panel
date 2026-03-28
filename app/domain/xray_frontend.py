@@ -49,6 +49,13 @@ class RelayConfigResult:
 
 
 @dataclass(slots=True)
+class SniffingConfigResult:
+    enabled: bool
+    dest_override: list[str]
+    route_only: bool
+
+
+@dataclass(slots=True)
 class FrontendApplyResult:
     preflight_ok: bool
     restarted: bool

@@ -6,8 +6,9 @@ from app.domain.xray_frontend import (
     FrontendApplyResult,
     FrontendConfigResult,
     RelayConfigResult,
+    SniffingConfigResult,
 )
-from app.domain.xray_frontend_config import UpdateFrontendConfigCommand, UpdateRelayConfigCommand
+from app.domain.xray_frontend_config import UpdateFrontendConfigCommand, UpdateRelayConfigCommand, UpdateSniffingCommand
 from app.repos.xray_frontend_repo import XrayFrontendRepo
 
 logger = logging.getLogger(__name__)
@@ -52,6 +53,27 @@ class ConfigService:
                 status_code=409,
             )
         return self._frontend_repo.get_relay_config_from_frontend()
+
+    def get_sniffing(self) -> SniffingConfigResult:
+        config = self._frontend_repo.read_config()
+        raw = config.get_sniffing()
+        return SniffingConfigResult(
+            enabled=raw["enabled"],
+            dest_override=list(raw.get("destOverride", [])),
+            route_only=raw.get("routeOnly", False),
+        )
+
+    def update_sniffing(self, command: UpdateSniffingCommand) -> SniffingConfigResult:
+        config = self._frontend_repo.read_config()
+        config.set_sniffing(command.enabled, command.dest_override, command.route_only)
+        apply_result = self._frontend_repo.apply_config(config)
+        if not apply_result.ready:
+            raise ControlPlaneError(
+                "sniffing_apply_failed",
+                f"Sniffing config was not applied: {apply_result.message}",
+                status_code=409,
+            )
+        return self.get_sniffing()
 
     def _build_frontend_candidate(self, command: UpdateFrontendConfigCommand) -> XrayConfigAccessor:
         config = self._frontend_repo.read_config()

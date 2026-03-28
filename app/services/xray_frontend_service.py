@@ -6,9 +6,10 @@ from app.domain.xray_frontend import (
     FrontendClientUriResult,
     FrontendConfigResult,
     RelayConfigResult,
+    SniffingConfigResult,
     TopologyHealthResult,
 )
-from app.domain.xray_frontend_config import UpdateFrontendConfigCommand, UpdateRelayConfigCommand
+from app.domain.xray_frontend_config import UpdateFrontendConfigCommand, UpdateRelayConfigCommand, UpdateSniffingCommand
 from app.repos.client_meta_repo import ClientMetaRepo
 from app.repos.relay_node_repo import RelayNodeRepo
 from app.repos.xray_frontend_repo import XrayFrontendRepo
@@ -91,3 +92,9 @@ class XrayFrontendService:
 
     def update_relay_config(self, command: UpdateRelayConfigCommand) -> RelayConfigResult:
         return self._config.update_relay(command)
+
+    def get_sniffing_config(self) -> SniffingConfigResult:
+        return self._config.get_sniffing()
+
+    def update_sniffing_config(self, command: UpdateSniffingCommand) -> SniffingConfigResult:
+        return self._config.update_sniffing(command)
