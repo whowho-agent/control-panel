@@ -1,3 +1,5 @@
+import copy
+
 FRONTEND_INBOUND_TAG = "frontend-in"
 RELAY_OUTBOUND_TAG = "to-relay"
 
@@ -44,4 +46,4 @@ class XrayConfigAccessor:
         }
 
     def to_dict(self) -> dict:
-        return self._raw
+        return copy.deepcopy(self._raw)

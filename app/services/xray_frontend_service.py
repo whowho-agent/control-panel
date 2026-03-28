@@ -63,7 +63,7 @@ class XrayFrontendService:
     def delete_client(self, client_id: str) -> bool:
         return self._clients.delete(client_id)
 
-    def set_client_enabled(self, client_id: str, enabled: bool) -> bool:
+    def set_client_enabled(self, client_id: str, enabled: bool) -> FrontendClient | None:
         return self._clients.set_enabled(client_id, enabled)
 
     def build_client_uri(self, host: str, client: FrontendClient, frontend_config: FrontendConfigResult) -> str:

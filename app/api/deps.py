@@ -1,3 +1,4 @@
+import logging
 import os
 import secrets
 from functools import lru_cache
@@ -9,6 +10,20 @@ from app.repos.client_meta_repo import ClientMetaRepo
 from app.repos.relay_node_repo import RelayNodeRepo
 from app.repos.xray_frontend_repo import XrayFrontendRepo
 from app.services.xray_frontend_service import XrayFrontendService
+
+logger = logging.getLogger(__name__)
+
+
+def _int_env(name: str, default: int) -> int:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    try:
+        return int(raw)
+    except ValueError:
+        raise RuntimeError(
+            f"Environment variable {name}={raw!r} is not a valid integer"
+        ) from None
 
 
 class Settings:
@@ -32,16 +47,21 @@ class Settings:
             "/opt/xray-frontend/clients-meta.json",
         )
         self.relay_host = os.getenv("XRAY_RELAY_HOST", "relay.example.com")
-        self.relay_port = int(os.getenv("XRAY_RELAY_PORT", "9443"))
+        self.relay_port = _int_env("XRAY_RELAY_PORT", 9443)
         self.relay_agent_url = os.getenv(
             "XRAY_RELAY_AGENT_URL",
             f"http://{self.relay_host}:9100",
         )
-        self.online_window_minutes = int(os.getenv("XRAY_ONLINE_WINDOW_MINUTES", "5"))
+        self.online_window_minutes = _int_env("XRAY_ONLINE_WINDOW_MINUTES", 5)
         self.expected_egress_ip = os.getenv("XRAY_EXPECTED_EGRESS_IP", "203.0.113.10")
         self.admin_user = os.getenv("XRAY_ADMIN_USER", "admin")
         self.admin_password = os.getenv("XRAY_ADMIN_PASSWORD", "change-me")
-        self.topology_cache_ttl_seconds = int(os.getenv("XRAY_TOPOLOGY_CACHE_TTL_SECONDS", "10"))
+        if self.admin_password == "change-me":
+            logger.critical(
+                "XRAY_ADMIN_PASSWORD is set to the default value 'change-me'. "
+                "Set a strong password via the XRAY_ADMIN_PASSWORD environment variable before exposing this service."
+            )
+        self.topology_cache_ttl_seconds = _int_env("XRAY_TOPOLOGY_CACHE_TTL_SECONDS", 10)
         self.transport_mode = os.getenv("XRAY_TRANSPORT_MODE", "direct").strip().lower() or "direct"
         self.relay_public_host = os.getenv("XRAY_RELAY_PUBLIC_HOST", self.relay_host)
         self.relay_private_host = os.getenv("XRAY_RELAY_PRIVATE_HOST", "")
@@ -72,7 +92,9 @@ def require_basic_auth(
     return credentials.username
 
 
-def get_xray_frontend_service(settings: Settings = Depends(get_settings)) -> XrayFrontendService:
+@lru_cache(maxsize=1)
+def get_xray_frontend_service() -> XrayFrontendService:
+    settings = get_settings()
     frontend_repo = XrayFrontendRepo(
         config_path=settings.frontend_config_path,
         access_log_path=settings.frontend_access_log_path,

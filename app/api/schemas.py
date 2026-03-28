@@ -81,7 +81,6 @@ class FrontendConfigOutput(BaseModel):
     port: int
     server_name: str
     public_key: str
-    private_key: str
     fingerprint: str
     short_ids: list[str]
     spider_x: str

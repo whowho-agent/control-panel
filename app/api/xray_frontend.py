@@ -74,12 +74,11 @@ def enable_client(
     service: XrayFrontendService = Depends(get_xray_frontend_service),
 ) -> ClientOutput:
     try:
-        updated = service.set_client_enabled(client_id, True)
+        client = service.set_client_enabled(client_id, True)
     except ControlPlaneError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
-    if not updated:
+    if client is None:
         raise HTTPException(status_code=404, detail="Client not found")
-    client = next(item for item in service.list_clients() if item.id == client_id)
     return ClientOutput(**asdict(client))
 
 
@@ -89,12 +88,11 @@ def disable_client(
     service: XrayFrontendService = Depends(get_xray_frontend_service),
 ) -> ClientOutput:
     try:
-        updated = service.set_client_enabled(client_id, False)
+        client = service.set_client_enabled(client_id, False)
     except ControlPlaneError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
-    if not updated:
+    if client is None:
         raise HTTPException(status_code=404, detail="Client not found")
-    client = next(item for item in service.list_clients() if item.id == client_id)
     return ClientOutput(**asdict(client))
 
 

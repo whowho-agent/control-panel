@@ -76,7 +76,7 @@ class ConfigService:
         return self.get_sniffing()
 
     def _build_frontend_candidate(self, command: UpdateFrontendConfigCommand) -> XrayConfigAccessor:
-        config = self._frontend_repo.read_config()
+        config = XrayConfigAccessor(self._frontend_repo.read_config().to_dict())
         inbound = config.frontend_inbound()
         vnext = config.relay_outbound()["settings"]["vnext"][0]
         reality = inbound["streamSettings"]["realitySettings"]
@@ -95,7 +95,7 @@ class ConfigService:
         return config
 
     def _build_relay_candidate(self, command: UpdateRelayConfigCommand) -> XrayConfigAccessor:
-        config = self._frontend_repo.read_config()
+        config = XrayConfigAccessor(self._frontend_repo.read_config().to_dict())
         vnext = config.relay_outbound()["settings"]["vnext"][0]
         vnext["address"] = command.public_host
         vnext["port"] = command.listen_port

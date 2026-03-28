@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import secrets
 import uuid
+from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 
 from app.domain.activity_log import ActivityLogEntry, parse_activity_lines
@@ -128,8 +129,7 @@ class ClientService:
         self._meta_repo.write({**meta, "clients": {**meta.get("clients", {}), client_id: new_entry}})
 
         client = FrontendClient(id=client_id, name=name, short_id=short_id, email=name)
-        frontend.short_ids = reality["shortIds"]
-        uri = self.build_uri(host, client, frontend)
+        uri = self.build_uri(host, client, replace(frontend, short_ids=reality["shortIds"]))
         return FrontendClientUriResult(client=client, uri=uri)
 
     def delete(self, client_id: str) -> bool:
@@ -150,14 +150,14 @@ class ClientService:
         self._meta_repo.write({**meta, "clients": remaining})
         return True
 
-    def set_enabled(self, client_id: str, enabled: bool) -> bool:
+    def set_enabled(self, client_id: str, enabled: bool) -> FrontendClient | None:
         config = self._frontend_repo.read_config()
         target = next(
             (item for item in config.frontend_clients() if item.get("id") == client_id),
             None,
         )
         if target is None:
-            return False
+            return None
         target["enable"] = enabled
         apply_result = self._frontend_repo.apply_config(config)
         if not apply_result.ready:
@@ -166,7 +166,25 @@ class ClientService:
                 f"Client state change aborted because frontend apply failed: {apply_result.message}",
                 status_code=409,
             )
-        return True
+        meta = self._meta_repo.read()
+        client_meta = meta.get("clients", {}).get(client_id, {})
+        last_seen = client_meta.get("last_seen", "")
+        return FrontendClient(
+            id=client_id,
+            name=client_meta.get("name") or target.get("email") or client_id,
+            short_id=client_meta.get("short_id", ""),
+            email=target.get("email", ""),
+            created_at=client_meta.get("created_at", ""),
+            last_seen=last_seen,
+            source_ip=client_meta.get("source_ip", ""),
+            status=compute_status(
+                last_seen=last_seen,
+                enabled=enabled,
+                has_any_activity=bool(last_seen),
+                window_minutes=self._online_window_minutes,
+            ),
+            enabled=enabled,
+        )
 
     def get_recent_activity(self, minutes: int, limit: int = 100) -> list[ActivityLogEntry]:
         lines = self._frontend_repo.read_access_log_lines()

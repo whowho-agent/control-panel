@@ -1,13 +1,13 @@
 import json
 import logging
-import re
 import subprocess
 import tempfile
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
+from app.domain.activity_log import parse_activity_lines
 from app.domain.xray_config import XrayConfigAccessor
 from app.domain.xray_frontend import FrontendApplyResult, FrontendConfigResult, RelayConfigResult
 
@@ -228,13 +228,20 @@ class XrayFrontendRepo:
     def derive_public_key(self, private_key: str) -> str:
         if not private_key:
             return ""
-        result = subprocess.run(
-            [self.xray_binary_path, "x25519", "-i", private_key],
-            check=True,
-            capture_output=True,
-            text=True,
-            timeout=30,
-        )
+        try:
+            result = subprocess.run(
+                [self.xray_binary_path, "x25519", "-i", private_key],
+                check=True,
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+        except FileNotFoundError:
+            logger.warning("derive_public_key: xray binary not found at %s", self.xray_binary_path)
+            return ""
+        except subprocess.CalledProcessError as exc:
+            logger.warning("derive_public_key: xray exited with code %d — %s", exc.returncode, exc.stderr)
+            return ""
         for line in result.stdout.splitlines():
             if line.startswith("Password:"):
                 return line.split(":", 1)[1].strip()
@@ -243,33 +250,19 @@ class XrayFrontendRepo:
         return ""
 
     def parse_activity(self) -> dict[str, dict[str, Any]]:
+        lines = self.read_access_log_lines(tail=2000)
+        # Use a far-past cutoff to capture all entries in the log tail
+        since = datetime.now(timezone.utc) - timedelta(days=365)
+        entries = parse_activity_lines(lines, since, limit=len(lines) + 1)
         result: dict[str, dict[str, Any]] = {}
-        if not self.access_log_path.exists():
-            return result
-        line_re = re.compile(
-            r"^(?P<ts>\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}(?:\.\d+)?) "
-            r"from (?:(?:tcp|udp):)?(?P<ip>[\d.]+):\d+ accepted .*? \[(?P<inbound>[^\]]+) ->"
-        )
-        email_re = re.compile(r"email:\s+(\S+)")
-        lines = self.access_log_path.read_text(errors="ignore").splitlines()[-2000:]
-        for line in lines:
-            match = line_re.search(line)
-            if not match or match.group("inbound") != "frontend-in":
-                continue
-            ts = match.group("ts")
-            fmt = "%Y/%m/%d %H:%M:%S.%f" if "." in ts else "%Y/%m/%d %H:%M:%S"
-            seen_at = datetime.strptime(ts, fmt).replace(tzinfo=timezone.utc)
-            ip = match.group("ip")
-            em = email_re.search(line)
-            email = em.group(1) if em else ""
-            key = email if email else ip
-            previous = result.get(key)
-            if not previous or seen_at > previous["last_seen_dt"]:
+        for entry in entries:
+            key = entry.email if entry.email else entry.source_ip
+            if key not in result or entry.timestamp > result[key]["last_seen_dt"]:
                 result[key] = {
-                    "last_seen_dt": seen_at,
-                    "last_seen": seen_at.isoformat().replace("+00:00", "Z"),
-                    "source_ip": ip,
-                    "email": email,
+                    "last_seen_dt": entry.timestamp,
+                    "last_seen": entry.timestamp.isoformat().replace("+00:00", "Z"),
+                    "source_ip": entry.source_ip,
+                    "email": entry.email,
                 }
         return result
 
@@ -297,6 +290,9 @@ class XrayFrontendRepo:
 
     def _load_json_file(self, path: Path) -> dict:
         raw = path.read_text()
+        # Workaround: some write paths on Windows produce a literal two-character
+        # sequence '\' + 'n' instead of a newline at EOF (e.g. via Ansible template
+        # or cross-platform copy). Normalise before parsing.
         if raw.endswith("\\n"):
             raw = raw[:-2] + "\n"
         return json.loads(raw)
