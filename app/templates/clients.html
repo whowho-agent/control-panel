@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% block content %}
 <h1>Clients</h1>
-<div class="card" style="margin-bottom:16px;">
+<div class="card mb-16">
   <div class="small" style="margin-bottom:10px;">Client mutations use the same safe apply workflow: write candidate config, validate it, restart the frontend, then confirm readiness.</div>
   <form method="post" action="/clients">
     <div style="display:grid;grid-template-columns:1fr 180px;gap:12px;align-items:end;">
@@ -38,12 +38,12 @@
         <td>{{ row.client.source_ip or '-' }}</td>
         <td><code title="{{ row.client.id }}">{{ row.client.id[:8] }}…</code></td>
         <td><code>{{ row.client.short_id }}</code></td>
-        <td style="white-space:nowrap;">
+        <td class="nowrap">
           <a href="{{ row.uri }}">URI</a>
           &nbsp;·&nbsp;
           <a href="/clients/{{ row.client.id }}/qr" target="_blank">QR</a>
         </td>
-        <td style="white-space:nowrap;">
+        <td class="nowrap">
           {% if row.client.enabled %}
           <form method="post" action="/clients/{{ row.client.id }}/disable" style="display:inline-block;margin-right:6px;">
             <button class="secondary sm" type="submit">Disable</button>
@@ -62,20 +62,20 @@
     </tbody>
   </table>
 </div>
-<div class="card" style="margin-top:16px;" id="activity-ctrl" data-paused="{{ 'true' if paused else 'false' }}" data-minutes="{{ minutes }}">
-  <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
+<div class="card mt-16" id="activity-ctrl" data-paused="{{ 'true' if paused else 'false' }}" data-minutes="{{ minutes }}">
+  <div class="flex items-center gap-12 flex-wrap" style="margin-bottom:12px;">
     <h2 style="margin:0;">Activity Log</h2>
-    <div style="display:flex;gap:6px;">
-      <a href="/clients?minutes=1{% if paused %}&paused=1{% endif %}" style="padding:4px 10px;font-size:12px;border-radius:6px;border:1px solid var(--line);background:{% if minutes==1 %}var(--panel2){% else %}transparent{% endif %};color:{% if minutes==1 %}var(--link){% else %}var(--text){% endif %};text-decoration:none;">1m</a>
-      <a href="/clients?minutes=3{% if paused %}&paused=1{% endif %}" style="padding:4px 10px;font-size:12px;border-radius:6px;border:1px solid var(--line);background:{% if minutes==3 %}var(--panel2){% else %}transparent{% endif %};color:{% if minutes==3 %}var(--link){% else %}var(--text){% endif %};text-decoration:none;">3m</a>
-      <a href="/clients?minutes=5{% if paused %}&paused=1{% endif %}" style="padding:4px 10px;font-size:12px;border-radius:6px;border:1px solid var(--line);background:{% if minutes==5 %}var(--panel2){% else %}transparent{% endif %};color:{% if minutes==5 %}var(--link){% else %}var(--text){% endif %};text-decoration:none;">5m</a>
+    <div class="flex gap-6">
+      <a href="/clients?minutes=1{% if paused %}&paused=1{% endif %}" class="tab-btn {{ 'active' if minutes==1 else '' }}">1m</a>
+      <a href="/clients?minutes=3{% if paused %}&paused=1{% endif %}" class="tab-btn {{ 'active' if minutes==3 else '' }}">3m</a>
+      <a href="/clients?minutes=5{% if paused %}&paused=1{% endif %}" class="tab-btn {{ 'active' if minutes==5 else '' }}">5m</a>
     </div>
     {% if paused %}
     <a href="/clients?minutes={{ minutes }}" style="font-size:12px;color:var(--ok);">▶ Resume</a>
     {% else %}
     <a href="/clients?minutes={{ minutes }}&paused=1" style="font-size:12px;color:var(--muted);">⏸ Pause</a>
     {% endif %}
-    <span class="small" style="margin-left:auto;">{{ activity|length }} lines{% if not paused %} · auto-refresh 10s{% endif %}</span>
+    <span class="small ml-auto">{{ activity|length }} lines{% if not paused %} · auto-refresh 10s{% endif %}</span>
   </div>
   {% if activity %}
   <pre style="margin:0;font-size:12px;color:var(--muted);line-height:1.6;overflow-x:auto;white-space:pre;">{% for e in activity %}{{ e.time_str }}  {{ "%-15s"|format(e.source_ip) }}  {{ "%-30s"|format(e.destination) }}  {{ e.email }}

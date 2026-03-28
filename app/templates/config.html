@@ -1,13 +1,13 @@
 {% extends 'base.html' %}
 {% block content %}
 <h1>Config Editor</h1>
-<div class="card" style="margin-bottom:16px;">
+<div class="info-card mb-16">
   <div><strong>Safe apply workflow</strong></div>
-  <div class="small" style="margin-top:6px;">Validate candidate config first. Save performs preflight validation, then restart, then readiness check. If restart fails, control-plane attempts rollback to the previous config.</div>
+  <div class="small mt-6">Validate candidate config first. Save performs preflight validation, then restart, then readiness check. If restart fails, control-plane attempts rollback to the previous config.</div>
 </div>
-<div class="card" style="margin-bottom:16px;">
+<div class="info-card mb-16">
   <div><strong>Transport mode</strong></div>
-  <div class="small" style="margin-top:6px;">
+  <div class="small mt-6">
     Mode <code>{{ topology.transport_mode }}</code> — {{ topology.transport_label }}.
     Active relay target <code>{{ topology.active_relay_host }}:{{ topology.active_relay_port }}</code>.
     {% if topology.ipsec_expected %}
@@ -17,36 +17,36 @@
     {% endif %}
   </div>
 </div>
-<div class="card" style="margin-bottom:16px;">
-  <h2 style="margin-top:0;">Sniffing</h2>
+<div class="card mb-16">
+  <h2>Sniffing</h2>
   <form method="post" action="/config/sniffing">
-    <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:center;">
-      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+    <div class="check-row">
+      <label class="check-label">
         <input type="checkbox" name="sniffing_enabled" value="on" {% if sniffing.enabled %}checked{% endif %} />
         Enabled
       </label>
-      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+      <label class="check-label">
         <input type="checkbox" name="sniffing_http" value="on" {% if 'http' in sniffing.dest_override %}checked{% endif %} />
         HTTP
       </label>
-      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+      <label class="check-label">
         <input type="checkbox" name="sniffing_tls" value="on" {% if 'tls' in sniffing.dest_override %}checked{% endif %} />
         TLS
       </label>
-      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+      <label class="check-label">
         <input type="checkbox" name="sniffing_quic" value="on" {% if 'quic' in sniffing.dest_override %}checked{% endif %} />
         QUIC
       </label>
-      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+      <label class="check-label">
         <input type="checkbox" name="sniffing_fakedns" value="on" {% if 'fakedns' in sniffing.dest_override %}checked{% endif %} />
         FakeDNS
       </label>
-      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+      <label class="check-label">
         <input type="checkbox" name="sniffing_route_only" value="on" {% if sniffing.route_only %}checked{% endif %} />
         Route only
       </label>
     </div>
-    <div style="margin-top:12px;">
+    <div class="mt-12">
       <button type="submit">Save + restart</button>
     </div>
   </form>
@@ -69,7 +69,7 @@
           <input id="frontend_fp" name="frontend_fp" value="{{ frontend.fingerprint }}" />
         </div>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;" class="mt-12">
         <div>
           <label for="frontend_target">Target</label>
           <input id="frontend_target" name="frontend_target" value="{{ frontend.target }}" />
@@ -79,7 +79,7 @@
           <input id="frontend_spider" name="frontend_spider" value="{{ frontend.spider_x }}" />
         </div>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;" class="mt-12">
         <div>
           <label for="relay_host">Relay host</label>
           <input id="relay_host" name="relay_host" value="{{ frontend.relay_host }}" />
@@ -89,18 +89,18 @@
           <input id="relay_port" name="relay_port" value="{{ frontend.relay_port }}" />
         </div>
       </div>
-      <div class="small" style="margin-top:8px;">
+      <div class="small mt-8">
         {% if topology.ipsec_expected %}
           In IPSec mode this should normally point at the private relay host <code>{{ topology.relay_private_host or '-' }}</code> after transport validation and cutover.
         {% else %}
           In direct mode this should point at the public relay host <code>{{ topology.relay_public_host or '-' }}</code>.
         {% endif %}
       </div>
-      <div style="margin-top:12px;">
+      <div class="mt-12">
         <label for="frontend_shortids">Short IDs (comma separated)</label>
         <input id="frontend_shortids" name="frontend_shortids" value="{{ frontend.short_ids | join(',') }}" />
       </div>
-      <div style="margin-top:16px;display:flex;gap:12px;">
+      <div class="form-actions">
         <button class="secondary" type="submit" formaction="/config/frontend/validate">Validate only</button>
         <button type="submit">Validate + save + restart</button>
       </div>
@@ -113,16 +113,16 @@
         <label for="relay_public_host">Relay host</label>
         <input id="relay_public_host" name="relay_public_host" value="{{ relay.host }}" />
       </div>
-      <div style="margin-top:12px;">
+      <div class="mt-12">
         <label for="relay_listen_port">Relay port</label>
         <input id="relay_listen_port" name="relay_listen_port" value="{{ relay.port }}" />
       </div>
-      <div style="margin-top:12px;">
+      <div class="mt-12">
         <label for="relay_uuid">Relay UUID</label>
         <input id="relay_uuid" name="relay_uuid" value="{{ relay.uuid }}" />
       </div>
-      <div class="small" style="margin-top:8px;">This edits the frontend outbound target. Keep public host for direct mode; switch intentionally to private host only after IPSec transport validation is green.</div>
-      <div style="margin-top:16px;display:flex;gap:12px;">
+      <div class="small mt-8">This edits the frontend outbound target. Keep public host for direct mode; switch intentionally to private host only after IPSec transport validation is green.</div>
+      <div class="form-actions">
         <button class="secondary" type="submit" formaction="/config/relay/validate">Validate only</button>
         <button type="submit">Validate + save + restart</button>
       </div>
