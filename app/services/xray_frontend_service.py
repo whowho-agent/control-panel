@@ -1,5 +1,5 @@
-from app.domain.transport_mode import TransportMode
 from app.domain.activity_log import ActivityLogEntry
+from app.domain.transport_mode import TransportMode
 from app.domain.xray_frontend import (
     CreateFrontendClientCommand,
     FrontendApplyResult,

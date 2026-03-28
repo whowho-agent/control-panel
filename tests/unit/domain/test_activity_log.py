@@ -1,7 +1,5 @@
 from datetime import datetime, timedelta, timezone
 
-import pytest
-
 from app.domain.activity_log import parse_activity_lines
 
 
@@ -10,7 +8,13 @@ def _ts(offset_seconds: int = 0) -> str:
     return t.strftime("%Y/%m/%d %H:%M:%S")
 
 
-def _line(offset_seconds: int = 0, ip: str = "1.2.3.4", dest: str = "google.com:443", email: str = "alice", inbound: str = "frontend-in") -> str:
+def _line(
+    offset_seconds: int = 0,
+    ip: str = "1.2.3.4",
+    dest: str = "google.com:443",
+    email: str = "alice",
+    inbound: str = "frontend-in",
+) -> str:
     return f"{_ts(offset_seconds)} from tcp:{ip}:12345 accepted tcp:{dest} [{inbound} -> to-relay] email: {email}"
 
 
