@@ -44,29 +44,10 @@ class FakeFrontendRepo:
         )
 
     def parse_activity(self) -> dict:
-        import re
-
-        result: dict = {}
-        if not self.access_log_path.exists():
-            return result
-        line_re = re.compile(
-            r"^(?P<ts>\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}\.\d+) "
-            r"from (?P<ip>[^:]+):\d+ accepted .*? \[(?P<inbound>[^\]]+) ->"
-        )
-        for line in self.access_log_path.read_text(errors="ignore").splitlines()[-2000:]:
-            match = line_re.search(line)
-            if not match or match.group("inbound") != "frontend-in":
-                continue
-            seen_at = datetime.strptime(match.group("ts"), "%Y/%m/%d %H:%M:%S.%f").replace(tzinfo=timezone.utc)
-            ip = match.group("ip")
-            prev = result.get(ip)
-            if not prev or seen_at > prev["last_seen_dt"]:
-                result[ip] = {
-                    "last_seen_dt": seen_at,
-                    "last_seen": seen_at.isoformat().replace("+00:00", "Z"),
-                    "source_ip": ip,
-                }
-        return result
+        from app.repos.xray_frontend_repo import XrayFrontendRepo
+        repo = XrayFrontendRepo.__new__(XrayFrontendRepo)
+        repo.access_log_path = self.access_log_path
+        return repo.parse_activity()
 
 
 class FakeMetaRepo:
@@ -86,7 +67,7 @@ def _base_config() -> dict:
             {
                 "tag": "frontend-in",
                 "port": 9444,
-                "settings": {"clients": [{"id": "client-1", "enable": True}]},
+                "settings": {"clients": [{"id": "client-1", "email": "alpha", "enable": True}]},
                 "streamSettings": {
                     "realitySettings": {
                         "privateKey": "priv",
@@ -128,7 +109,7 @@ def test_list_marks_online_when_recent_activity(tmp_path: Path) -> None:
     svc, _, meta_repo = build_service(tmp_path)
     ts = datetime.now(timezone.utc).strftime("%Y/%m/%d %H:%M:%S.%f")
     (tmp_path / "access.log").write_text(
-        f"{ts} from 1.2.3.4:12345 accepted tcp:example.com:443 [frontend-in -> to-relay]\n"
+        f"{ts} from 1.2.3.4:12345 accepted tcp:example.com:443 [frontend-in -> to-relay] email: alpha\n"
     )
     clients = svc.list()
     assert clients[0].status == "online"

@@ -43,16 +43,8 @@ class ClientService:
         meta = self._meta_repo.read()
         clients: list[FrontendClient] = []
         meta_changed = False
-        enabled_client_ids = [
-            item["id"] for item in config.frontend_clients() if item.get("enable", True)
-        ]
 
         activity_by_email = {v["email"]: v for v in activity.values() if v.get("email")}
-        activity_by_ip = {v["source_ip"]: v for v in activity.values() if v.get("source_ip")}
-
-        fallback_activity = None
-        if len(enabled_client_ids) == 1 and activity:
-            fallback_activity = max(activity.values(), key=lambda item: item["last_seen_dt"])
 
         for item in config.frontend_clients():
             client_id = item["id"]
@@ -60,20 +52,11 @@ class ClientService:
             last_seen = client_meta.get("last_seen", "")
             source_ip = client_meta.get("source_ip", "")
             email = item.get("email", "")
-            matched_activity = (
-                activity_by_email.get(email)
-                or (activity_by_ip.get(source_ip) if source_ip else None)
-            )
+            matched_activity = activity_by_email.get(email)
 
             if matched_activity:
                 last_seen = matched_activity["last_seen"]
                 source_ip = matched_activity["source_ip"]
-                if client_meta.get("last_seen") != last_seen or client_meta.get("source_ip") != source_ip:
-                    meta = _update_client_meta(meta, client_id, last_seen, source_ip)
-                    meta_changed = True
-            elif fallback_activity and client_id == enabled_client_ids[0]:
-                last_seen = fallback_activity["last_seen"]
-                source_ip = fallback_activity["source_ip"]
                 if client_meta.get("last_seen") != last_seen or client_meta.get("source_ip") != source_ip:
                     meta = _update_client_meta(meta, client_id, last_seen, source_ip)
                     meta_changed = True
