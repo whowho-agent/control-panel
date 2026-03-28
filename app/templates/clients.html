@@ -71,14 +71,14 @@
       <a href="/clients?minutes=5{% if paused %}&paused=1{% endif %}" class="tab-btn {{ 'active' if minutes==5 else '' }}">5m</a>
     </div>
     {% if paused %}
-    <a href="/clients?minutes={{ minutes }}" style="font-size:12px;color:var(--ok);">▶ Resume</a>
+    <a href="/clients?minutes={{ minutes }}&paused=0" style="font-size:12px;color:var(--ok);">▶ Resume</a>
     {% else %}
     <a href="/clients?minutes={{ minutes }}&paused=1" style="font-size:12px;color:var(--muted);">⏸ Pause</a>
     {% endif %}
     <span class="small ml-auto">{{ activity|length }} lines{% if not paused %} · auto-refresh 10s{% endif %}</span>
   </div>
   {% if activity %}
-  <pre style="margin:0;font-size:12px;color:var(--muted);line-height:1.6;overflow-x:auto;white-space:pre;">{% for e in activity %}{{ e.time_str }}  {{ "%-15s"|format(e.source_ip) }}  {{ "%-30s"|format(e.destination) }}  {{ e.email }}
+  <pre id="activity-log" style="margin:0;font-size:12px;color:var(--muted);line-height:1.6;overflow-x:auto;white-space:pre;">{% for e in activity %}{{ e.time_str }}  {{ "%-15s"|format(e.source_ip) }}  {{ "%-30s"|format(e.destination) }}  {{ e.email }}
 {% endfor %}</pre>
   {% else %}
   <div class="small">No activity in the last {{ minutes }} minute{{ 's' if minutes != 1 else '' }}.</div>
@@ -89,21 +89,36 @@
 <script>
 (function () {
   var ctrl    = document.getElementById('activity-ctrl');
+  var log     = document.getElementById('activity-log');
+  var counter = document.querySelector('#activity-ctrl .small.ml-auto');
   var paused  = ctrl.dataset.paused === 'true';
   var minutes = ctrl.dataset.minutes;
 
-  // Restore scroll position after page reload
-  var saved = sessionStorage.getItem('clients_scroll');
-  if (saved) {
-    window.scrollTo(0, parseInt(saved, 10));
-    sessionStorage.removeItem('clients_scroll');
+  function refresh() {
+    fetch('/clients/activity?minutes=' + minutes, { credentials: 'same-origin' })
+      .then(function (r) { return r.text(); })
+      .then(function (html) {
+        if (log) {
+          log.textContent = html;
+        } else {
+          // no activity on load — swap in pre if lines appeared
+          var pre = document.createElement('pre');
+          pre.id = 'activity-log';
+          pre.style.cssText = 'margin:0;font-size:12px;color:var(--muted);line-height:1.6;overflow-x:auto;white-space:pre;';
+          pre.textContent = html;
+          var empty = ctrl.querySelector('.small');
+          if (empty) empty.replaceWith(pre);
+        }
+        if (counter) {
+          var lines = html.trim() === '' ? 0 : html.trim().split('\n').length;
+          counter.textContent = lines + ' lines · auto-refresh 10s';
+        }
+      })
+      .catch(function () {});
   }
 
   if (!paused) {
-    setInterval(function () {
-      sessionStorage.setItem('clients_scroll', window.scrollY);
-      window.location.href = '/clients?minutes=' + minutes;
-    }, 10000);
+    setInterval(refresh, 10000);
   }
 })();
 </script>

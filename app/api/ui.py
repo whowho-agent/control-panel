@@ -101,6 +101,21 @@ def clients_page(
     )
 
 
+@router.get("/clients/activity", response_class=HTMLResponse)
+def clients_activity_fragment(
+    request: Request,
+    minutes: int = Query(default=1, ge=1, le=10),
+    _: str = Depends(require_basic_auth),
+    service: XrayFrontendService = Depends(get_xray_frontend_service),
+) -> HTMLResponse:
+    activity = service.get_recent_activity(minutes)
+    return templates.TemplateResponse(
+        request,
+        "activity_fragment.html",
+        {"activity": activity, "minutes": minutes},
+    )
+
+
 @router.get("/clients/{client_id}/qr")
 def client_qr(
     client_id: str,

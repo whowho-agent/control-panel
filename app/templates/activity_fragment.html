@@ -1,0 +1,2 @@
+{% if activity %}{% for e in activity %}{{ e.time_str }}  {{ "%-15s"|format(e.source_ip) }}  {{ "%-30s"|format(e.destination) }}  {{ e.email }}
+{% endfor %}{% else %}No activity in the last {{ minutes }} minute{{ 's' if minutes != 1 else '' }}.{% endif %}
