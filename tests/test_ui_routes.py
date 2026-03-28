@@ -86,6 +86,9 @@ class FakeUiService:
     def update_sniffing_config(self, command):
         return self.get_sniffing_config()
 
+    def get_recent_activity(self, minutes, limit=100):
+        return []
+
 
 def test_clients_page_renders_with_basic_auth() -> None:
     app.dependency_overrides[get_xray_frontend_service] = lambda: FakeUiService()

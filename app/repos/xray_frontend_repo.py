@@ -273,6 +273,11 @@ class XrayFrontendRepo:
                 }
         return result
 
+    def read_access_log_lines(self, tail: int = 5000) -> list[str]:
+        if not self.access_log_path.exists():
+            return []
+        return self.access_log_path.read_text(errors="ignore").splitlines()[-tail:]
+
     def _systemctl_command(self, action: str) -> list[str]:
         if self.use_nsenter:
             return [

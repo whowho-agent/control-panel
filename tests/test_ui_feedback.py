@@ -78,6 +78,13 @@ class FakeUiService:
     def validate_relay_config(self, command):
         return FrontendApplyResult(True, False, False, "validated", "Config validation passed")
 
+    def get_sniffing_config(self):
+        from app.domain.xray_frontend import SniffingConfigResult
+        return SniffingConfigResult(enabled=False, dest_override=[], route_only=False)
+
+    def get_recent_activity(self, minutes, limit=100):
+        return []
+
 
 def test_clients_page_renders_flash_messages() -> None:
     app.dependency_overrides[get_xray_frontend_service] = lambda: FakeUiService()

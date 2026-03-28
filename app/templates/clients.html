@@ -62,4 +62,27 @@
     </tbody>
   </table>
 </div>
+<div class="card" style="margin-top:16px;">
+  {% if not paused %}<meta http-equiv="refresh" content="10;url=/clients?minutes={{ minutes }}">{% endif %}
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
+    <h2 style="margin:0;">Activity Log</h2>
+    <div style="display:flex;gap:6px;">
+      <a href="/clients?minutes=1{% if paused %}&paused=1{% endif %}" class="nav" style="padding:4px 10px;font-size:12px;border-radius:6px;border:1px solid var(--line);background:{% if minutes==1 %}var(--panel2){% else %}transparent{% endif %};color:{% if minutes==1 %}var(--link){% else %}var(--text){% endif %};text-decoration:none;">1m</a>
+      <a href="/clients?minutes=3{% if paused %}&paused=1{% endif %}" style="padding:4px 10px;font-size:12px;border-radius:6px;border:1px solid var(--line);background:{% if minutes==3 %}var(--panel2){% else %}transparent{% endif %};color:{% if minutes==3 %}var(--link){% else %}var(--text){% endif %};text-decoration:none;">3m</a>
+      <a href="/clients?minutes=5{% if paused %}&paused=1{% endif %}" style="padding:4px 10px;font-size:12px;border-radius:6px;border:1px solid var(--line);background:{% if minutes==5 %}var(--panel2){% else %}transparent{% endif %};color:{% if minutes==5 %}var(--link){% else %}var(--text){% endif %};text-decoration:none;">5m</a>
+    </div>
+    {% if paused %}
+    <a href="/clients?minutes={{ minutes }}" style="font-size:12px;color:var(--ok);">▶ Resume</a>
+    {% else %}
+    <a href="/clients?minutes={{ minutes }}&paused=1" style="font-size:12px;color:var(--muted);">⏸ Pause</a>
+    {% endif %}
+    <span class="small" style="margin-left:auto;">{{ activity|length }} lines{% if not paused %} · auto-refresh 10s{% endif %}</span>
+  </div>
+  {% if activity %}
+  <pre style="margin:0;font-size:12px;color:var(--muted);line-height:1.6;overflow-x:auto;white-space:pre;">{% for e in activity %}{{ e.time_str }}  {{ "%-15s"|format(e.source_ip) }}  {{ "%-30s"|format(e.destination) }}  {{ e.email }}
+{% endfor %}</pre>
+  {% else %}
+  <div class="small">No activity in the last {{ minutes }} minute{{ 's' if minutes != 1 else '' }}.</div>
+  {% endif %}
+</div>
 {% endblock %}

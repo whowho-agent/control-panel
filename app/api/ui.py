@@ -1,7 +1,7 @@
 import subprocess
 from urllib.parse import urlencode
 
-from fastapi import APIRouter, Depends, Form, Request
+from fastapi import APIRouter, Depends, Form, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
@@ -75,6 +75,8 @@ def dashboard(
 @router.get("/clients", response_class=HTMLResponse)
 def clients_page(
     request: Request,
+    minutes: int = Query(default=3, ge=1, le=10),
+    paused: int = Query(default=0),
     _: str = Depends(require_basic_auth),
     service: XrayFrontendService = Depends(get_xray_frontend_service),
 ) -> HTMLResponse:
@@ -84,11 +86,15 @@ def clients_page(
     rows = []
     for client in clients:
         rows.append({"client": client, "uri": service.build_client_uri(host, client, frontend)})
+    activity = service.get_recent_activity(minutes)
     return templates.TemplateResponse(
         request,
         "clients.html",
         {
             "rows": rows,
+            "activity": activity,
+            "minutes": minutes,
+            "paused": bool(paused),
             "success_message": _humanize_message(_query_message(request, "success")),
             "error_message": _humanize_message(_query_message(request, "error")),
         },

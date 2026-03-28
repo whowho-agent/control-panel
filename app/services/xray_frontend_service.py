@@ -1,4 +1,5 @@
 from app.domain.transport_mode import TransportMode
+from app.domain.activity_log import ActivityLogEntry
 from app.domain.xray_frontend import (
     CreateFrontendClientCommand,
     FrontendApplyResult,
@@ -92,6 +93,9 @@ class XrayFrontendService:
 
     def update_relay_config(self, command: UpdateRelayConfigCommand) -> RelayConfigResult:
         return self._config.update_relay(command)
+
+    def get_recent_activity(self, minutes: int, limit: int = 100) -> list[ActivityLogEntry]:
+        return self._clients.get_recent_activity(minutes, limit=limit)
 
     def get_sniffing_config(self) -> SniffingConfigResult:
         return self._config.get_sniffing()

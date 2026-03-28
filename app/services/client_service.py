@@ -3,8 +3,9 @@ from __future__ import annotations
 import logging
 import secrets
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
+from app.domain.activity_log import ActivityLogEntry, parse_activity_lines
 from app.domain.client_status import compute_status
 from app.domain.vless_uri import VlessUriBuilder
 from app.domain.xray_frontend import (
@@ -166,6 +167,11 @@ class ClientService:
                 status_code=409,
             )
         return True
+
+    def get_recent_activity(self, minutes: int, limit: int = 100) -> list[ActivityLogEntry]:
+        lines = self._frontend_repo.read_access_log_lines()
+        since = datetime.now(timezone.utc) - timedelta(minutes=minutes)
+        return parse_activity_lines(lines, since, limit=limit)
 
     def build_uri(self, host: str, client: FrontendClient, frontend_config: FrontendConfigResult) -> str:
         return VlessUriBuilder().build(client, host, frontend_config)
