@@ -45,12 +45,15 @@ class ClientService:
         meta = self._meta_repo.read()
         clients: list[FrontendClient] = []
         meta_changed = False
+        clients_meta = meta.get("clients", {})
 
         activity_by_email = {v["email"]: v for v in activity.values() if v.get("email")}
+        active_ids: set[str] = set()
 
         for item in config.frontend_clients():
             client_id = item["id"]
-            client_meta = meta.get("clients", {}).get(client_id, {})
+            active_ids.add(client_id)
+            client_meta = clients_meta.get(client_id, {})
             last_seen = client_meta.get("last_seen", "")
             source_ip = client_meta.get("source_ip", "")
             email = item.get("email", "")
@@ -61,25 +64,53 @@ class ClientService:
                 source_ip = matched_activity["source_ip"]
                 if client_meta.get("last_seen") != last_seen or client_meta.get("source_ip") != source_ip:
                     meta = _update_client_meta(meta, client_id, last_seen, source_ip)
+                    clients_meta = meta.get("clients", {})
                     meta_changed = True
 
-            status = compute_status(
-                last_seen=last_seen,
-                enabled=item.get("enable", True),
-                has_any_activity=bool(activity),
-                window_minutes=self._online_window_minutes,
-            )
             clients.append(
                 FrontendClient(
                     id=client_id,
-                    name=client_meta.get("name") or item.get("email") or client_id,
+                    name=client_meta.get("name") or email or client_id,
                     short_id=client_meta.get("short_id", ""),
-                    email=item.get("email", ""),
+                    email=email,
                     created_at=client_meta.get("created_at", ""),
                     last_seen=last_seen,
                     source_ip=source_ip,
-                    status=status,
-                    enabled=item.get("enable", True),
+                    status=compute_status(
+                        last_seen=last_seen,
+                        enabled=True,
+                        has_any_activity=bool(activity),
+                        window_minutes=self._online_window_minutes,
+                    ),
+                    enabled=True,
+                )
+            )
+
+        # Disabled clients: in meta with enabled=False, not in active config
+        for client_id, client_meta in clients_meta.items():
+            if client_id in active_ids:
+                continue
+            if client_meta.get("enabled", True):
+                continue
+            xray_entry = client_meta.get("xray_entry", {})
+            email = xray_entry.get("email", "")
+            last_seen = client_meta.get("last_seen", "")
+            clients.append(
+                FrontendClient(
+                    id=client_id,
+                    name=client_meta.get("name") or email or client_id,
+                    short_id=client_meta.get("short_id", ""),
+                    email=email,
+                    created_at=client_meta.get("created_at", ""),
+                    last_seen=last_seen,
+                    source_ip=client_meta.get("source_ip", ""),
+                    status=compute_status(
+                        last_seen=last_seen,
+                        enabled=False,
+                        has_any_activity=bool(activity),
+                        window_minutes=self._online_window_minutes,
+                    ),
+                    enabled=False,
                 )
             )
 
@@ -134,31 +165,57 @@ class ClientService:
 
     def delete(self, client_id: str) -> bool:
         config = self._frontend_repo.read_config()
-        before = len(config.frontend_clients())
-        config.set_frontend_clients([item for item in config.frontend_clients() if item.get("id") != client_id])
-        if len(config.frontend_clients()) == before:
-            return False
-        apply_result = self._frontend_repo.apply_config(config)
-        if not apply_result.ready:
-            raise ControlPlaneError(
-                "client_delete_apply_failed",
-                f"Client delete aborted because frontend apply failed: {apply_result.message}",
-                status_code=409,
-            )
         meta = self._meta_repo.read()
-        remaining = {k: v for k, v in meta.get("clients", {}).items() if k != client_id}
-        self._meta_repo.write({**meta, "clients": remaining})
+        original = config.frontend_clients()
+        remaining_config = [c for c in original if c["id"] != client_id]
+        config_changed = len(remaining_config) < len(original)
+        client_meta = meta.get("clients", {}).get(client_id)
+        is_disabled = client_meta is not None and not client_meta.get("enabled", True)
+
+        if not config_changed and not is_disabled:
+            return False
+
+        if config_changed:
+            config.set_frontend_clients(remaining_config)
+            apply_result = self._frontend_repo.apply_config(config)
+            if not apply_result.ready:
+                raise ControlPlaneError(
+                    "client_delete_apply_failed",
+                    f"Client delete aborted because frontend apply failed: {apply_result.message}",
+                    status_code=409,
+                )
+
+        remaining_meta = {k: v for k, v in meta.get("clients", {}).items() if k != client_id}
+        self._meta_repo.write({**meta, "clients": remaining_meta})
         return True
 
     def set_enabled(self, client_id: str, enabled: bool) -> FrontendClient | None:
         config = self._frontend_repo.read_config()
-        target = next(
-            (item for item in config.frontend_clients() if item.get("id") == client_id),
-            None,
-        )
-        if target is None:
+        meta = self._meta_repo.read()
+        clients_meta = meta.get("clients", {})
+        client_meta = clients_meta.get(client_id, {})
+        in_config = next((c for c in config.frontend_clients() if c["id"] == client_id), None)
+        is_disabled_in_meta = not client_meta.get("enabled", True) and "xray_entry" in client_meta
+
+        # Client must exist either in config (enabled) or in meta as disabled
+        if in_config is None and not is_disabled_in_meta:
             return None
-        target["enable"] = enabled
+
+        if enabled:
+            # Restore xray entry to config (if currently disabled)
+            xray_entry = client_meta.get("xray_entry")
+            if xray_entry and in_config is None:
+                config.set_frontend_clients([*config.frontend_clients(), xray_entry])
+            # Strip xray_entry and mark enabled in meta
+            updated_client = {k: v for k, v in client_meta.items() if k != "xray_entry"}
+            updated_client["enabled"] = True
+        else:
+            # Remove from config, store original entry in meta
+            xray_entry = in_config or client_meta.get("xray_entry", {"id": client_id})
+            if in_config is not None:
+                config.set_frontend_clients([c for c in config.frontend_clients() if c["id"] != client_id])
+            updated_client = {**client_meta, "enabled": False, "xray_entry": xray_entry}
+
         apply_result = self._frontend_repo.apply_config(config)
         if not apply_result.ready:
             raise ControlPlaneError(
@@ -166,17 +223,21 @@ class ClientService:
                 f"Client state change aborted because frontend apply failed: {apply_result.message}",
                 status_code=409,
             )
-        meta = self._meta_repo.read()
-        client_meta = meta.get("clients", {}).get(client_id, {})
-        last_seen = client_meta.get("last_seen", "")
+
+        updated_meta = {**meta, "clients": {**clients_meta, client_id: updated_client}}
+        self._meta_repo.write(updated_meta)
+
+        xray_entry = updated_client.get("xray_entry") or in_config or {}
+        email = xray_entry.get("email", "") if not enabled else (in_config or {}).get("email", "")
+        last_seen = updated_client.get("last_seen", "")
         return FrontendClient(
             id=client_id,
-            name=client_meta.get("name") or target.get("email") or client_id,
-            short_id=client_meta.get("short_id", ""),
-            email=target.get("email", ""),
-            created_at=client_meta.get("created_at", ""),
+            name=updated_client.get("name") or email or client_id,
+            short_id=updated_client.get("short_id", ""),
+            email=email,
+            created_at=updated_client.get("created_at", ""),
             last_seen=last_seen,
-            source_ip=client_meta.get("source_ip", ""),
+            source_ip=updated_client.get("source_ip", ""),
             status=compute_status(
                 last_seen=last_seen,
                 enabled=enabled,

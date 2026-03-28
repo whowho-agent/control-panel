@@ -154,14 +154,50 @@ def test_delete_returns_false_for_unknown_id(tmp_path: Path) -> None:
     assert svc.delete("no-such-id") is False
 
 
-def test_set_enabled_false(tmp_path: Path) -> None:
-    svc, repo, _ = build_service(tmp_path)
+def test_set_enabled_false_removes_client_from_config(tmp_path: Path) -> None:
+    svc, repo, meta_repo = build_service(tmp_path)
     result = svc.set_enabled("client-1", False)
     assert result is not None
     assert result.enabled is False
-    assert repo.config["inbounds"][0]["settings"]["clients"][0]["enable"] is False
+    # Client must be removed from xray config so xray actually blocks it
+    assert repo.config["inbounds"][0]["settings"]["clients"] == []
+    # Original entry stored in meta for later restoration
+    assert meta_repo.meta["clients"]["client-1"]["enabled"] is False
+    assert meta_repo.meta["clients"]["client-1"]["xray_entry"]["id"] == "client-1"
+
+
+def test_set_enabled_true_restores_client_to_config(tmp_path: Path) -> None:
+    svc, repo, meta_repo = build_service(tmp_path)
+    svc.set_enabled("client-1", False)
+    assert repo.config["inbounds"][0]["settings"]["clients"] == []
+    result = svc.set_enabled("client-1", True)
+    assert result is not None
+    assert result.enabled is True
+    clients_in_config = repo.config["inbounds"][0]["settings"]["clients"]
+    assert len(clients_in_config) == 1
+    assert clients_in_config[0]["id"] == "client-1"
+    assert "xray_entry" not in meta_repo.meta["clients"]["client-1"]
+    assert meta_repo.meta["clients"]["client-1"]["enabled"] is True
 
 
 def test_set_enabled_returns_none_for_unknown_id(tmp_path: Path) -> None:
     svc, _, _ = build_service(tmp_path)
     assert svc.set_enabled("no-such-id", True) is None
+
+
+def test_list_shows_disabled_clients(tmp_path: Path) -> None:
+    svc, repo, _ = build_service(tmp_path)
+    svc.set_enabled("client-1", False)
+    clients = svc.list()
+    assert len(clients) == 1
+    assert clients[0].id == "client-1"
+    assert clients[0].enabled is False
+
+
+def test_delete_disabled_client(tmp_path: Path) -> None:
+    svc, repo, meta_repo = build_service(tmp_path)
+    svc.set_enabled("client-1", False)
+    assert repo.config["inbounds"][0]["settings"]["clients"] == []
+    deleted = svc.delete("client-1")
+    assert deleted is True
+    assert "client-1" not in meta_repo.meta.get("clients", {})

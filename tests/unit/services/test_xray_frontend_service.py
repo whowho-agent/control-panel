@@ -262,19 +262,24 @@ def test_set_client_enabled_sets_false(tmp_path: Path) -> None:
 
     assert result is not None
     assert result.enabled is False
-    assert frontend_repo.config["inbounds"][0]["settings"]["clients"][0]["enable"] is False
+    # Client is removed from xray config (xray VLESS ignores enable flag)
+    assert frontend_repo.config["inbounds"][0]["settings"]["clients"] == []
     assert frontend_repo.restart_calls == 1
 
 
 def test_set_client_enabled_sets_true(tmp_path: Path) -> None:
-    service, frontend_repo, _, _ = build_service(tmp_path)
-    frontend_repo.config["inbounds"][0]["settings"]["clients"][0]["enable"] = False
+    service, frontend_repo, meta_repo, _ = build_service(tmp_path)
+    # First disable so client is removed from config
+    service.set_client_enabled("client-1", False)
+    assert frontend_repo.config["inbounds"][0]["settings"]["clients"] == []
 
     result = service.set_client_enabled("client-1", True)
 
     assert result is not None
     assert result.enabled is True
-    assert frontend_repo.config["inbounds"][0]["settings"]["clients"][0]["enable"] is True
+    clients_in_config = frontend_repo.config["inbounds"][0]["settings"]["clients"]
+    assert len(clients_in_config) == 1
+    assert clients_in_config[0]["id"] == "client-1"
 
 
 def test_validate_frontend_config_runs_preflight_without_restart(tmp_path: Path) -> None:
